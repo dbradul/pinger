@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+
+  backend:
+    build: ./
+    restart: always
+    command: gunicorn -w 10 --threads 4 --bind 0.0.0.0:${PORT} src.main:app
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - ./src:/srv/project/src
+      - ./.env:/srv/project/.env
+    env_file:
+      - .env
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ngrok:
+    build:
+      context: ./ngrok
+      args:
+        - NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
+    restart: always
+    command: /bin/ngrok http -subdomain=${SUBDOMAIN} --config /root/ngrok.yml backend:${PORT}
+#    ports:
+#      - "4040:4040"
+    env_file:
+      - .env
