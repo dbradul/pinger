@@ -1,9 +1,10 @@
-FROM python:3.8
+FROM python:3.9
 
 RUN apt update
+RUN apt install iputils-ping -y
 
-RUN mkdir /srv/project
-WORKDIR /srv/project
+RUN mkdir /app
+WORKDIR /app
 
 COPY ./src ./src
 COPY ./Pipfile ./Pipfile

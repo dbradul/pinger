@@ -9,8 +9,8 @@ services:
     ports:
       - "${PORT}:${PORT}"
     volumes:
-      - ./src:/srv/project/src
-      - ./.env:/srv/project/.env
+      - ./src:/app/src
+      - ./.env:/app/src/.env
     env_file:
       - .env
     logging:
@@ -24,7 +24,8 @@ services:
       args:
         - NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
     restart: always
-    command: /bin/ngrok http -subdomain=${SUBDOMAIN} --config /root/ngrok.yml backend:${PORT}
+#    command: /bin/ngrok http -subdomain=${SUBDOMAIN} --config /root/ngrok.yml backend:${PORT}
+    command: /bin/ngrok http --config /root/ngrok.yml backend:${PORT}
 #    ports:
 #      - "4040:4040"
     env_file:
