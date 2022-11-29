@@ -43,7 +43,7 @@ viber = Api(BotConfiguration(
 ))
 
 def get_current_state_info(current_state):
-    return 'Світло є!' if current_state else 'Світла немає!'
+    return 'Світло є' if current_state else 'Світла немає'
 
 
 def is_online(ip_address):
@@ -78,7 +78,7 @@ def incoming():
                 DEFAULT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
-                        text='Перевищено ліміт повідомлень. Спробуйте пізніше.',
+                        text='_Перевищено ліміт повідомлень. Спробуйте пізніше._',
                         keyboard=DEFAULT_KEYBOARD
                     )
                 ])

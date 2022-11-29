@@ -19,7 +19,7 @@ rebuildf:
 
 reboot: stop start
 
-rebootd: stop startd
+rebootd: stop startd logs
 
 startd:
 	docker compose up -d
