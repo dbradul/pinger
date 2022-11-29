@@ -5,13 +5,15 @@ services:
   backend:
     build: ./
     restart: always
-    command: gunicorn -w 10 --threads 4 --bind 0.0.0.0:${PORT} src.main:app
+#    command: gunicorn -w 10 --threads 4 --bind 0.0.0.0:${PORT} src.main:app
+    command: python /app/src/main.py
     ports:
       - "${PORT}:${PORT}"
     volumes:
       - ./src:/app/src
       - ./data:/app/data
-      - ./.env:/app/src/.env
+      - ./logs:/app/logs
+        #      - ./.env:/app/src/.env
     env_file:
       - .env
     logging:
@@ -26,7 +28,10 @@ services:
         - NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
     restart: always
 #    command: /bin/ngrok http -subdomain=${SUBDOMAIN} --config /root/ngrok.yml backend:${PORT}
-    command: /bin/ngrok http --config /root/ngrok.yml backend:${PORT}
+#    command: /bin/ngrok http --config /root/ngrok.yml backend:${PORT}
+    command: sh -c "/bin/ngrok http --config /root/ngrok.yml backend:${PORT} | tee /var/log/ngrok.log"
+    volumes:
+      - ./logs:/var/log
 #    ports:
 #      - "4040:4040"
     env_file:

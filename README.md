@@ -1,4 +1,4 @@
-# Product Feed #
+# Pinger #
 
-This project provides REST api endpoint to serve products feed in JSON format
+This app pings given ip address and provides Viber bot interface to manage the app.
 

@@ -1,32 +1,34 @@
+.DEFAULT_GOAL := default
+
+default: rebootd
+
 start:
-	docker-compose up
+	docker compose up
 
 stop:
-	docker-compose down
+	docker compose down -t 1
 
 restart:
-	docker-compose restart
+	docker compose restart
 
 rebuild:
-	docker-compose build
+	docker compose build
 
 rebuildf:
-	docker-compose build --no-cache
+	docker compose build --no-cache
 
-reboot:
-	docker-compose down && docker-compose up
+reboot: stop start
+
+rebootd: stop startd
 
 startd:
-	docker-compose up -d
-
-rebootd:
-	docker-compose down && docker-compose up -d
-
-logs:
-	docker-compose logs -f
+	docker compose up -d
 
 top:
-	docker-compose top
+	docker compose top
+
+logs:
+	docker compose logs -f
 
 export:
 	export $(cat .env | sed 's/#.*//g' | xargs)

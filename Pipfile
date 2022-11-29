@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 flask = "*"
-flask-limiter = "*"
+ratelimit = "*"
 gunicorn = "*"
 webargs = "*"
 python-dotenv = "*"
@@ -16,3 +16,5 @@ viberbot = "*"
 python_version = "3.9"
 
 [dev-packages]
+pytest = "*"
+pytest-mock = "*"

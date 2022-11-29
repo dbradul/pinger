@@ -1,5 +1,6 @@
 web_addr: 0.0.0.0:4040
 update: false
+#log: stdout
 log: stdout
 log_level: info
 subdomain: gem4.kadorr

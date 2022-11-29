@@ -2,8 +2,8 @@ MSG_QUESTION_TEXT = 'Світло є?'
 MSG_SUBSCRIBE_TEXT = 'Підписатись'
 MSG_UNSUBSCRIBE_TEXT = 'Відписатись'
 
-KBRD_BTN_SUBSCRIBE_LABEL = f"<font bold size=24>{MSG_SUBSCRIBE_TEXT}</font>"
-KBRD_BTN_UNSUBSCRIBE_LABEL = f"<font bold size=24>{MSG_UNSUBSCRIBE_TEXT}</font>"
+KBRD_BTN_SUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_SUBSCRIBE_TEXT}</font>"
+KBRD_BTN_UNSUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_UNSUBSCRIBE_TEXT}</font>"
 KBRD_BTN_QUESTION_LABEL = f"<font bold size=24>{MSG_QUESTION_TEXT}</font>"
 
 KBRD_SUBSCRIBE = {
@@ -16,6 +16,7 @@ KBRD_SUBSCRIBE = {
             # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_SUBSCRIBE_LABEL,
             # "Text": "Світло є?",
+            "BgColor": "#BCE29E",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
@@ -53,6 +54,7 @@ KBRD_UNSUBSCRIBE = {
             # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_UNSUBSCRIBE_LABEL,
             # "Text": "Світло є?",
+            "BgColor": "#F7A4A4",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
