@@ -1,26 +1,23 @@
 import logging
 import os
 import re
+import requests
 import time
 from datetime import datetime, timedelta
+from flask import request, Response
 from threading import Thread
-
-import requests
-from flask import Flask, request, Response
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.messages.text_message import TextMessage
-from viberbot.api.viber_requests import ViberConversationStartedRequest
+from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 from viberbot.api.viber_requests import ViberFailedRequest
 from viberbot.api.viber_requests import ViberMessageRequest
 from viberbot.api.viber_requests import ViberSubscribedRequest
-from webargs import fields
-from webargs.flaskparser import use_kwargs
-from ratelimit import limits, RateLimitException
 
+from app import app
+from helpers import ScopeRateLimiter
 from keyboards import *
 from models import Contact
-from app import app
 
 # logger = logging.getLogger(__name__)
 # logger.addHandler(logging.StreamHandler())
@@ -35,6 +32,7 @@ PING_TIMEOUT = os.getenv('PING_TIMEOUT')
 PING_INTERVAL = float(os.getenv('PING_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 
+rate_limiter = ScopeRateLimiter(calls=3, period=10)
 
 viber = Api(BotConfiguration(
     name='gem4',
@@ -48,7 +46,7 @@ def get_current_state_info(current_state):
 
 def is_online(ip_address):
     app.logger.info(f"PINGING {ip_address}...")
-    response = os.system(f"ping -c 1 -t {PING_TIMEOUT} {ip_address}")
+    response = os.system(f"ping -c 1 -W {PING_TIMEOUT} {ip_address}")
     return response == 0
 
 
@@ -57,6 +55,7 @@ def post_start():
     time.sleep(5)
     requests.get(f'http://localhost:{PORT}/register')
     requests.get(f'http://localhost:{PORT}/init_db')
+
 
 @app.route('/', methods=['POST'])
 def incoming():
@@ -70,10 +69,11 @@ def incoming():
         viber_request = viber.parse_request(request.get_data())
 
         if isinstance(viber_request, ViberMessageRequest):
-            try:
+            allowed = rate_limiter.check_limits(scope=viber_request.sender.id)
+            if allowed:
                 handle_message(viber_request)
-            except RateLimitException as e:
-                logger.error(f'RATE LIMIT ERROR: {e}')
+            else:
+                logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {viber_request.sender.id}')
                 contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
                 DEFAULT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
                 viber.send_messages(viber_request.sender.id, [
@@ -82,19 +82,21 @@ def incoming():
                         keyboard=DEFAULT_KEYBOARD
                     )
                 ])
-            except Exception as e:
-                logger.error(f'GENERAL ERROR: {e}')
         elif isinstance(viber_request, ViberSubscribedRequest):
             viber.send_messages(viber_request.get_user.id, [
                 TextMessage(text="thanks for subscribing!")
             ])
+        elif isinstance(viber_request, ViberUnsubscribedRequest):
+            contact = Contact.get_or_none(Contact.id == viber_request.user_id)
+            if contact:
+                contact.delete_instance()
         elif isinstance(viber_request, ViberConversationStartedRequest):
             viber.send_messages(viber_request.user.id, [
                 TextMessage(
                     text=f"""Вітаю, {viber_request.user.name}! 🙌
 
-                    Якщо ти хочеш отримувати повідомлення про світло, натисни кнопку 'Підписатись'.
-                    Якщо хочеш дізнатись чи є світло саме зараз, натисни кнопку 'Світло є?'
+Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.
+Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'
                     """,
                     keyboard=KBRD_SUBSCRIBE
                 )
@@ -102,12 +104,11 @@ def incoming():
         elif isinstance(viber_request, ViberFailedRequest):
             logger.warning("client failed receiving message. failure: {0}".format(viber_request))
     except Exception as e:
-        logger.error(e)
+        logger.error(f'GENERAL ERROR: {e}')
 
     return Response(status=200)
 
 
-@limits(calls=3, period=10)
 def handle_message(viber_request):
     message = viber_request.message
     contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
@@ -166,21 +167,6 @@ def handle_message(viber_request):
                 keyboard=KBRD_SUBSCRIBE
             )
         ])
-
-    # except RateLimitException as e:
-    #     logger.error(f'RATE LIMIT ERROR: {e}')
-    #     # viber_request = viber.parse_request(request.get_data())
-    #     # contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-    #     # DEFAULT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
-    #     viber.send_messages(viber_request.sender.id, [
-    #         TextMessage(
-    #             text='Перевищено ліміт повідомлень. Спробуйте пізніше.',
-    #             keyboard=DEFAULT_KEYBOARD
-    #         )
-    #     ])
-    # except Exception as e:
-    #     logger.error(f'GENERAL ERROR: {e}')
-
     return True
 
 
@@ -196,10 +182,10 @@ def register():
             if m:
                 ngrok_url = m.groups(0)[0]
                 viber.set_webhook('https://' + ngrok_url)
-                logger.info(f"Self registering done: {ngrok_url}")
+                logger.info(f"SELF REGISTERING DONE: {ngrok_url}")
                 break
         else:
-            app.logger.error('URL is not recognized')
+            app.logger.error('URL IS NOT RECOGNIZED')
 
     return 'OK - Registered'
 
@@ -230,6 +216,7 @@ def notify_subscribers(current_state):
             logger.error(f"ERROR SENDING MESSAGE TO {contact.id}: {e}")
             # contact.active = False
             # contact.save()
+
 
 def ping():
     global g_current_state

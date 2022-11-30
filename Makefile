@@ -1,5 +1,7 @@
 .DEFAULT_GOAL := default
 
+.PHONY: test logs
+
 default: rebootd
 
 start:

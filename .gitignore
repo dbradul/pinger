@@ -3,6 +3,7 @@ env/
 **/__pycache__/
 .*
 data/
+logs/
 !.flake8
 !.env.example
 !.gitignore
