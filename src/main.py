@@ -37,6 +37,7 @@ PING_INTERVAL = float(os.getenv('PING_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
+BOT_SUFFIX = '📢'
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
@@ -47,7 +48,7 @@ viber = Api(BotConfiguration(
 ))
 
 def get_current_state_info(current_state, bot=False):
-    suffix = "(бот)" if bot else ""
+    suffix = BOT_SUFFIX if bot else ""
     state_info = LIGHT_ON if current_state else LIGHT_OFF
     return f'{state_info} {suffix}'
 
