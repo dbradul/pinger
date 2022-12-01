@@ -165,7 +165,7 @@ def handle_message(viber_request):
         ])
     elif message.text == MSG_ADMIN_STATS_TEXT:
         contacts = Contact.filter(Contact.active == True).order_by(Contact.last_access.desc()).objects()
-        result = '\n.\n'.join([str(c) for c in contacts])
+        result = '\n'.join([c.info() for c in contacts])
         message = f'```{result}```'
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
