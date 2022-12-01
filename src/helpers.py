@@ -9,7 +9,7 @@ class ScopeRateLimiter:
     def check_limits(self, scope):
         result = True
         if scope not in self.scopes:
-            self.scopes[scope] = ratelimit.limits(**self.config)(lambda : None)
+            self.scopes[scope] = ratelimit.limits(**self.config)(lambda: None)
         try:
             self.scopes[scope]()
         except ratelimit.exception.RateLimitException as e:

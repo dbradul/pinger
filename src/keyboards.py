@@ -1,6 +1,7 @@
 MSG_QUESTION_TEXT = 'Світло є?'
 MSG_SUBSCRIBE_TEXT = 'Підписатись'
 MSG_UNSUBSCRIBE_TEXT = 'Відписатись'
+MSG_ADMIN_STATS_TEXT = 'stats42'
 
 KBRD_BTN_SUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_SUBSCRIBE_TEXT}</font>"
 KBRD_BTN_UNSUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_UNSUBSCRIBE_TEXT}</font>"
@@ -13,25 +14,18 @@ KBRD_SUBSCRIBE = {
         {
             "Columns": 3,
             "Rows": 1,
-            # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_SUBSCRIBE_LABEL,
-            # "Text": "Світло є?",
             "BgColor": "#BCE29E",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
             "ActionType": "reply",
-            "ActionBody": MSG_SUBSCRIBE_TEXT,
-            # "Silent": "true"
-            # "BgColor": "#f7bb3f",
-            # "Image": "https: //s12.postimg.org/ti4alty19/smoke.png"
+            "ActionBody": MSG_SUBSCRIBE_TEXT
         },
         {
             "Columns": 3,
             "Rows": 1,
-            # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_QUESTION_LABEL,
-            # "Text": "Світло є?",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
@@ -51,33 +45,23 @@ KBRD_UNSUBSCRIBE = {
         {
             "Columns": 3,
             "Rows": 1,
-            # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_UNSUBSCRIBE_LABEL,
-            # "Text": "Світло є?",
             "BgColor": "#F7A4A4",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
             "ActionType": "reply",
-            "ActionBody": MSG_UNSUBSCRIBE_TEXT,
-            # "Silent": "true"
-            # "BgColor": "#f7bb3f",
-            # "Image": "https: //s12.postimg.org/ti4alty19/smoke.png"
+            "ActionBody": MSG_UNSUBSCRIBE_TEXT
         },
         {
             "Columns": 3,
             "Rows": 1,
-            # "Text": "<font bold size=24 color=\"#494E67\">Світло є?</font>",
             "Text": KBRD_BTN_QUESTION_LABEL,
-            # "Text": "Світло є?",
             "TextSize": "medium",
             "TextHAlign": "center",
             "TextVAlign": "center",
             "ActionType": "reply",
-            "ActionBody": MSG_QUESTION_TEXT,
-            # "Silent": "true"
-            # "BgColor": "#f7bb3f",
-            # "Image": "https: //s12.postimg.org/ti4alty19/smoke.png"
+            "ActionBody": MSG_QUESTION_TEXT
         },
     ]
 }

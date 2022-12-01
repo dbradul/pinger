@@ -21,8 +21,12 @@ from models import Contact
 
 # logger = logging.getLogger(__name__)
 # logger.addHandler(logging.StreamHandler())
-logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(threadName)s %(levelname)-8s %(message)s")
+log_file = './logs/bot.log'
 logger = app.logger
+# logger.addHandler(logging.StreamHandler())StreamHandler
+logging.basicConfig(level=logging.INFO, filename=log_file,
+                    format="%(asctime)-15s %(threadName)s %(levelname)-8s %(message)s")
+
 g_current_state = None
 
 PORT = os.getenv('PORT')
@@ -31,8 +35,10 @@ ROUTER_IP = os.getenv('ROUTER_IP')
 PING_TIMEOUT = os.getenv('PING_TIMEOUT')
 PING_INTERVAL = float(os.getenv('PING_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
+LIGHT_ON = 'Світло є'
+LIGHT_OFF = 'Світла немає'
 
-rate_limiter = ScopeRateLimiter(calls=3, period=10)
+rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
 viber = Api(BotConfiguration(
     name='gem4',
@@ -40,8 +46,10 @@ viber = Api(BotConfiguration(
     auth_token=API_TOKEN
 ))
 
-def get_current_state_info(current_state):
-    return 'Світло є' if current_state else 'Світла немає'
+def get_current_state_info(current_state, bot=False):
+    suffix = "(бот)" if bot else ""
+    state_info = LIGHT_ON if current_state else LIGHT_OFF
+    return f'{state_info} {suffix}'
 
 
 def is_online(ip_address):
@@ -82,10 +90,6 @@ def incoming():
                         keyboard=DEFAULT_KEYBOARD
                     )
                 ])
-        elif isinstance(viber_request, ViberSubscribedRequest):
-            viber.send_messages(viber_request.get_user.id, [
-                TextMessage(text="thanks for subscribing!")
-            ])
         elif isinstance(viber_request, ViberUnsubscribedRequest):
             contact = Contact.get_or_none(Contact.id == viber_request.user_id)
             if contact:
@@ -112,23 +116,16 @@ def incoming():
 def handle_message(viber_request):
     message = viber_request.message
     contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-    DEFAULT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
+    CURRENT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
 
     # try:
     app.logger.info(f"MESSAGE: {message.text}")
     if message.text == MSG_QUESTION_TEXT:
-
         info = get_current_state_info(g_current_state)
-
-        # message_kbrd = KeyboardMessage(
-        #     keyboard=CHECK_LIGHT,
-        #     min_api_version=3
-        # )
-
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text=info,
-                keyboard=DEFAULT_KEYBOARD
+                keyboard=CURRENT_KEYBOARD
             )
         ])
     elif message.text == MSG_SUBSCRIBE_TEXT:
@@ -151,7 +148,6 @@ def handle_message(viber_request):
                 keyboard=KBRD_UNSUBSCRIBE
             )
         ])
-
     elif message.text == MSG_UNSUBSCRIBE_TEXT:
         # contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
         if contact is not None:
@@ -167,6 +163,17 @@ def handle_message(viber_request):
                 keyboard=KBRD_SUBSCRIBE
             )
         ])
+    elif message.text == MSG_ADMIN_STATS_TEXT:
+        contacts = Contact.filter(Contact.active == True).order_by(Contact.last_access.desc()).objects()
+        result = '\n.\n'.join([str(c) for c in contacts])
+        message = f'```{result}```'
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=message,
+                keyboard=CURRENT_KEYBOARD
+            )
+        ])
+
     return True
 
 
@@ -201,12 +208,14 @@ def notify_subscribers(current_state):
     look_back_window = datetime.utcnow() - timedelta(minutes=0)
     contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
     logger.info(f"SUBSCRIBERS TO NOTIFY: {contacts.count()}")
+    # for i in range(100):
     for contact in contacts:
         try:
-            logger.info(f"SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
+            logger.info(f"  SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
             viber.send_messages(contact.id, [
                 TextMessage(
-                    text=get_current_state_info(current_state),
+                    # text=get_current_state_info(current_state, bot=True) + f" ({i})",
+                    text=get_current_state_info(current_state, bot=True),
                     keyboard=KBRD_UNSUBSCRIBE
                 )
             ])

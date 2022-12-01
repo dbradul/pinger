@@ -1,0 +1,6 @@
+- stress test of parallel requests
+- 2+ welcome messages
+- logs for bot
+- stats command
+- register new account and spin new instance
+- tests, refactoring
