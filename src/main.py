@@ -1,6 +1,9 @@
+import copy
 import logging
 import os
 import re
+import traceback
+
 import requests
 import time
 from datetime import datetime, timedelta
@@ -12,7 +15,6 @@ from viberbot.api.messages.text_message import TextMessage
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 from viberbot.api.viber_requests import ViberFailedRequest
 from viberbot.api.viber_requests import ViberMessageRequest
-from viberbot.api.viber_requests import ViberSubscribedRequest
 
 from app import app
 from helpers import ScopeRateLimiter
@@ -35,9 +37,11 @@ ROUTER_IP = os.getenv('ROUTER_IP')
 PING_TIMEOUT = os.getenv('PING_TIMEOUT')
 PING_INTERVAL = float(os.getenv('PING_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
+BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
 LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
 BOT_SUFFIX = '📢'
+ADMIN_ID = os.getenv('ADMIN_ID')
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
@@ -47,10 +51,19 @@ viber = Api(BotConfiguration(
     auth_token=API_TOKEN
 ))
 
+
 def get_current_state_info(current_state, bot=False):
     suffix = BOT_SUFFIX if bot else ""
     state_info = LIGHT_ON if current_state else LIGHT_OFF
     return f'{state_info} {suffix}'
+
+
+def get_current_keyboard(contact):
+    keyboard = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
+    if contact and contact.id == ADMIN_ID:
+        keyboard = copy.deepcopy(keyboard)
+        keyboard['Buttons'].append(KBRD_BTN_ADMIN)
+    return keyboard
 
 
 def is_online(ip_address):
@@ -61,7 +74,7 @@ def is_online(ip_address):
 
 def post_start():
     logger.debug("Post start")
-    time.sleep(5)
+    time.sleep(BACKEND_STARTUP_DELAY)
     requests.get(f'http://localhost:{PORT}/register')
     requests.get(f'http://localhost:{PORT}/init_db')
 
@@ -79,69 +92,76 @@ def incoming():
 
         if isinstance(viber_request, ViberMessageRequest):
             allowed = rate_limiter.check_limits(scope=viber_request.sender.id)
-            if allowed:
-                handle_message(viber_request)
-            else:
+            contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
+            keyboard = get_current_keyboard(contact)
+
+            if contact is None:
+                app.logger.error(f"Contact {viber_request.sender.id} not found in DB!")
+                viber.send_messages(viber_request.sender.id, [
+                    TextMessage(
+                        text='Ваш контакт не знайдено. Спробуйте додатись до чату знову.',
+                        # keyboard=keyboard
+                    )
+                ])
+            elif not allowed:
                 logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {viber_request.sender.id}')
-                contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-                DEFAULT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
                         text='_Перевищено ліміт повідомлень. Спробуйте пізніше._',
-                        keyboard=DEFAULT_KEYBOARD
+                        keyboard=keyboard
                     )
                 ])
+            else:
+                handle_message(viber_request, contact, keyboard)
+
         elif isinstance(viber_request, ViberUnsubscribedRequest):
             contact = Contact.get_or_none(Contact.id == viber_request.user_id)
             if contact:
                 contact.delete_instance()
-        elif isinstance(viber_request, ViberConversationStartedRequest):
-            viber.send_messages(viber_request.user.id, [
-                TextMessage(
-                    text=f"""Вітаю, {viber_request.user.name}! 🙌
 
-Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.
-Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'
-                    """,
-                    keyboard=KBRD_SUBSCRIBE
+        elif isinstance(viber_request, ViberConversationStartedRequest):
+            contact = Contact.get_or_none(Contact.id == viber_request.user.id)
+            if contact is None:
+                viber.send_messages(viber_request.user.id, [
+                    TextMessage(
+                        text=f"Вітаю, {viber_request.user.name}! 🙌\n\n"
+                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.\n"
+                             "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'",
+                        keyboard=KBRD_SUBSCRIBE
+                    )
+                ])
+                Contact.create(
+                    id=viber_request.user.id,
+                    name=viber_request.user.name,
+                    active=False,
+                    last_access=datetime.utcnow()
                 )
-            ])
         elif isinstance(viber_request, ViberFailedRequest):
             logger.warning("client failed receiving message. failure: {0}".format(viber_request))
+
     except Exception as e:
         logger.error(f'GENERAL ERROR: {e}')
+        logger.error(traceback.format_exc())
 
     return Response(status=200)
 
 
-def handle_message(viber_request):
+def handle_message(viber_request, contact, keyboard):
     message = viber_request.message
-    contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-    CURRENT_KEYBOARD = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
-
-    # try:
     app.logger.info(f"MESSAGE: {message.text}")
+
     if message.text == MSG_QUESTION_TEXT:
         info = get_current_state_info(g_current_state)
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text=info,
-                keyboard=CURRENT_KEYBOARD
+                keyboard=keyboard
             )
         ])
     elif message.text == MSG_SUBSCRIBE_TEXT:
-        # contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-        if contact is None:
-            Contact.create(
-                id=viber_request.sender.id,
-                name=viber_request.sender.name,
-                active=True,
-                last_access=datetime.utcnow()
-            )
-        else:
-            contact.active = True
-            contact.last_access = datetime.utcnow()
-            contact.save()
+        contact.active = True
+        contact.last_access = datetime.utcnow()
+        contact.save()
 
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
@@ -150,13 +170,9 @@ def handle_message(viber_request):
             )
         ])
     elif message.text == MSG_UNSUBSCRIBE_TEXT:
-        # contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-        if contact is not None:
-            contact.active = False
-            contact.last_access = datetime.utcnow()
-            contact.save()
-        else:
-            app.logger.error(f"Contact {viber_request.sender.id} not found, but is trying to unsubscribe!")
+        contact.active = False
+        contact.last_access = datetime.utcnow()
+        contact.save()
 
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
@@ -171,10 +187,9 @@ def handle_message(viber_request):
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text=message,
-                keyboard=CURRENT_KEYBOARD
+                keyboard=keyboard
             )
         ])
-
     return True
 
 
@@ -224,8 +239,7 @@ def notify_subscribers(current_state):
             contact.save()
         except Exception as e:
             logger.error(f"ERROR SENDING MESSAGE TO {contact.id}: {e}")
-            # contact.active = False
-            # contact.save()
+            logger.error(traceback.format_exc())
 
 
 def ping():

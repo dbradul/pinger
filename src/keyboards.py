@@ -6,6 +6,18 @@ MSG_ADMIN_STATS_TEXT = 'stats42'
 KBRD_BTN_SUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_SUBSCRIBE_TEXT}</font>"
 KBRD_BTN_UNSUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_UNSUBSCRIBE_TEXT}</font>"
 KBRD_BTN_QUESTION_LABEL = f"<font bold size=24>{MSG_QUESTION_TEXT}</font>"
+KBRD_BTN_ADMIN = {
+    "Columns": 6,
+    "Rows": 1,
+    "Text": '...',
+    "TextSize": "medium",
+    "TextHAlign": "center",
+    "TextVAlign": "center",
+    "ActionType": "reply",
+    "ActionBody": 'stats42',
+}
+
+
 
 KBRD_SUBSCRIBE = {
     "Type": "keyboard",
@@ -34,7 +46,7 @@ KBRD_SUBSCRIBE = {
             # "Silent": "true"
             # "BgColor": "#f7bb3f",
             # "Image": "https: //s12.postimg.org/ti4alty19/smoke.png"
-        },
+        }
     ]
 }
 

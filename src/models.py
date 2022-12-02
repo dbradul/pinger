@@ -3,6 +3,7 @@ from peewee import *
 db = SqliteDatabase('./data/contacts.db')
 
 class Contact(Model):
+    # id = CharField(index=True, unique=True)
     id = CharField()
     name = CharField()
     active = BooleanField()
