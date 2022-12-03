@@ -11,6 +11,7 @@ webargs = "*"
 python-dotenv = "*"
 peewee = "*"
 viberbot = "*"
+peewee-migrate = "*"
 
 [requires]
 python_version = "3.9"

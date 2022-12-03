@@ -32,5 +32,16 @@ top:
 logs:
 	docker compose logs -f
 
+create-migration:
+	cd src && pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+#     pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+
+apply-migration:
+	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db && cd ..
+
+apply-migration-name:
+	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db --name $(n) && cd ..
+
+
 export:
 	export $(cat .env | sed 's/#.*//g' | xargs)

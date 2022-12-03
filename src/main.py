@@ -19,7 +19,7 @@ from viberbot.api.viber_requests import ViberMessageRequest
 from app import app
 from helpers import ScopeRateLimiter
 from keyboards import *
-from models import Contact
+from models import Contact, History
 
 # logger = logging.getLogger(__name__)
 # logger.addHandler(logging.StreamHandler())
@@ -40,7 +40,7 @@ PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
 LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
-BOT_SUFFIX = '📢'
+BOT_TAG = '📢'
 ADMIN_ID = os.getenv('ADMIN_ID')
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
@@ -53,9 +53,9 @@ viber = Api(BotConfiguration(
 
 
 def get_current_state_info(current_state, bot=False):
-    suffix = BOT_SUFFIX if bot else ""
+    tag = BOT_TAG if bot else ""
     state_info = LIGHT_ON if current_state else LIGHT_OFF
-    return f'{state_info} {suffix}'
+    return f'{tag} {state_info}'
 
 
 def get_current_keyboard(contact):
@@ -158,6 +158,8 @@ def handle_message(viber_request, contact, keyboard):
                 keyboard=keyboard
             )
         ])
+        contact.count_requests += 1
+        contact.save()
     elif message.text == MSG_SUBSCRIBE_TEXT:
         contact.active = True
         contact.last_access = datetime.utcnow()
@@ -182,14 +184,15 @@ def handle_message(viber_request, contact, keyboard):
         ])
     elif message.text == MSG_ADMIN_STATS_TEXT:
         contacts = Contact.filter(Contact.active == True).order_by(Contact.last_access.desc()).objects()
-        result = '\n'.join([c.info() for c in contacts])
-        message = f'```{result}```'
-        viber.send_messages(viber_request.sender.id, [
-            TextMessage(
-                text=message,
-                keyboard=keyboard
-            )
-        ])
+        # result = '\n'.join([c.info() for c in contacts])
+        for c in contacts:
+            message = f'```{c.formatted_info()}```'
+            viber.send_messages(viber_request.sender.id, [
+                TextMessage(
+                    text=message,
+                    keyboard=keyboard
+                )
+            ])
     return True
 
 
@@ -218,6 +221,11 @@ def init_db():
     logger.debug("received request. get data: {0}".format(request.get_data()))
     Contact.create_table()
     return 'OK - Created'
+
+
+def dump_event(current_state):
+    event = get_current_state_info(current_state)
+    History.create(event_date=datetime.utcnow(), event_type=event)
 
 
 def notify_subscribers(current_state):
@@ -262,6 +270,7 @@ def ping():
                 current_state = result
                 g_current_state = current_state
                 logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
+                dump_event(current_state)
                 notify_subscribers(current_state)
 
         logger.info('CURRENT STATE (ONLINE): %s', current_state)

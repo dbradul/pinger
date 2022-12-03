@@ -4,6 +4,7 @@ env/
 .*
 data/
 logs/
+src/migrations
 !.flake8
 !.env.example
 !.gitignore
