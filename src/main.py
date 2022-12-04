@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import re
+import sys
 import traceback
 
 import requests
@@ -34,8 +35,9 @@ g_current_state = None
 PORT = os.getenv('PORT')
 API_TOKEN = os.getenv('API_TOKEN')
 ROUTER_IP = os.getenv('ROUTER_IP')
-PING_TIMEOUT = os.getenv('PING_TIMEOUT')
-PING_INTERVAL = float(os.getenv('PING_INTERVAL'))
+ROUTER_PORT = os.getenv('ROUTER_PORT')
+ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
+ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
 LIGHT_ON = 'Світло є'
@@ -66,10 +68,20 @@ def get_current_keyboard(contact):
     return keyboard
 
 
-def is_online(ip_address):
-    app.logger.info(f"PINGING {ip_address}...")
-    response = os.system(f"ping -c 1 -W {PING_TIMEOUT} {ip_address}")
-    return response == 0
+def is_online(ip_address, port):
+    app.logger.info(f"REQUESTING {ip_address}...")
+    # response = os.system(f"ping -c 1 -W {PING_TIMEOUT} {ip_address}")
+    # return response == 0
+    try:
+        response = requests.get(f"http://{ip_address}:{port}", timeout=ROUTER_REQUEST_TIMEOUT)
+        result = response.status_code == 200
+    except requests.exceptions.ConnectTimeout as ex:
+        app.logger.error(f"ROUTER REQUEST TIMEOUT: {ex}")
+        result = False
+    except Exception as ex:
+        app.logger.error(f"ROUTER GENERAL ERROR: {ex}")
+        result = False
+    return result
 
 
 def post_start():
@@ -255,27 +267,33 @@ def ping():
     current_state = None
     probe_count = 0
     while True:
-        result = is_online(ROUTER_IP)
-        if current_state is None:
-            current_state = result
-            g_current_state = current_state
-        else:
-            if result != current_state:
-                probe_count += 1
-            else:
-                probe_count = 0
-
-            if probe_count == PROBE_COUNT_LIMIT:
-                probe_count = 0
+        try:
+            result = is_online(ROUTER_IP, ROUTER_PORT)
+            if current_state is None:
                 current_state = result
                 g_current_state = current_state
-                logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
-                dump_event(current_state)
-                notify_subscribers(current_state)
+            else:
+                if result != current_state:
+                    probe_count += 1
+                else:
+                    probe_count = 0
 
-        logger.info('CURRENT STATE (ONLINE): %s', current_state)
-        logger.info('PING_INTERVAL: %s', PING_INTERVAL)
-        time.sleep(PING_INTERVAL)
+                if probe_count == PROBE_COUNT_LIMIT:
+                    probe_count = 0
+                    current_state = result
+                    g_current_state = current_state
+                    logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
+                    dump_event(current_state)
+                    notify_subscribers(current_state)
+
+            logger.info('CURRENT STATE (ONLINE): %s', current_state)
+            logger.info('PING_INTERVAL: %s', ROUTER_REQUEST_INTERVAL)
+            time.sleep(ROUTER_REQUEST_INTERVAL)
+
+        except Exception as e:
+            logger.error(f'GENERAL ERROR: {e}')
+            logger.error(traceback.format_exc())
+            #sys.exit(1)
 
 
 if __name__ == "__main__":
