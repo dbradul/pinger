@@ -30,20 +30,20 @@ logger = app.logger
 logging.basicConfig(level=logging.INFO, filename=log_file,
                     format="%(asctime)-15s %(threadName)s %(levelname)-8s %(message)s")
 
-g_current_state = None
 
 PORT = os.getenv('PORT')
 API_TOKEN = os.getenv('API_TOKEN')
 ROUTER_IP = os.getenv('ROUTER_IP')
 ROUTER_PORT = os.getenv('ROUTER_PORT')
 ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
-ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
+ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
 LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
 BOT_TAG = '📢'
-ADMIN_ID = os.getenv('ADMIN_ID')
+ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
+
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
@@ -53,6 +53,9 @@ viber = Api(BotConfiguration(
     auth_token=API_TOKEN
 ))
 
+g_current_state = None
+g_is_masked = False
+
 
 def get_current_state_info(current_state, bot=False):
     tag = BOT_TAG if bot else ""
@@ -60,11 +63,11 @@ def get_current_state_info(current_state, bot=False):
     return f'{tag} {state_info}'
 
 
-def get_current_keyboard(contact):
+def get_contact_keyboard(contact):
     keyboard = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
-    if contact and contact.id == ADMIN_ID:
+    if contact and contact.id in ADMIN_IDS:
         keyboard = copy.deepcopy(keyboard)
-        keyboard['Buttons'].append(KBRD_BTN_ADMIN)
+        keyboard['Buttons'].extend(get_admin_keyboard(g_is_masked))
     return keyboard
 
 
@@ -105,7 +108,7 @@ def incoming():
         if isinstance(viber_request, ViberMessageRequest):
             allowed = rate_limiter.check_limits(scope=viber_request.sender.id)
             contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
-            keyboard = get_current_keyboard(contact)
+            keyboard = get_contact_keyboard(contact)
 
             if contact is None:
                 app.logger.error(f"Contact {viber_request.sender.id} not found in DB!")
@@ -159,6 +162,7 @@ def incoming():
 
 
 def handle_message(viber_request, contact, keyboard):
+    global g_is_masked
     message = viber_request.message
     app.logger.info(f"MESSAGE: {message.text}")
 
@@ -176,22 +180,24 @@ def handle_message(viber_request, contact, keyboard):
         contact.active = True
         contact.last_access = datetime.utcnow()
         contact.save()
+        keyboard = get_contact_keyboard(contact)
 
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text='Підписано на розсилку',
-                keyboard=KBRD_UNSUBSCRIBE
+                keyboard=keyboard
             )
         ])
     elif message.text == MSG_UNSUBSCRIBE_TEXT:
         contact.active = False
         contact.last_access = datetime.utcnow()
         contact.save()
+        keyboard = get_contact_keyboard(contact)
 
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text='Відписано від розсилки',
-                keyboard=KBRD_SUBSCRIBE
+                keyboard=keyboard
             )
         ])
     elif message.text == MSG_ADMIN_STATS_TEXT:
@@ -205,6 +211,15 @@ def handle_message(viber_request, contact, keyboard):
                     keyboard=keyboard
                 )
             ])
+    elif message.text in (MSG_ADMIN_MASK_TEXT, MSG_ADMIN_UNMASK_TEXT):
+        g_is_masked = not g_is_masked
+        keyboard = get_contact_keyboard(contact)
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Розсилка повідомлень: {"ВИМКНЕНО" if g_is_masked else "УВІМКНЕНО"}!',
+                keyboard=keyboard
+            )
+        ])
     return True
 
 
@@ -248,11 +263,12 @@ def notify_subscribers(current_state):
     for contact in contacts:
         try:
             logger.info(f"  SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
+            keyboard = get_contact_keyboard(contact)
             viber.send_messages(contact.id, [
                 TextMessage(
                     # text=get_current_state_info(current_state, bot=True) + f" ({i})",
                     text=get_current_state_info(current_state, bot=True),
-                    keyboard=KBRD_UNSUBSCRIBE
+                    keyboard=keyboard
                 )
             ])
             contact.last_access = datetime.utcnow()
@@ -282,9 +298,12 @@ def ping():
                     probe_count = 0
                     current_state = result
                     g_current_state = current_state
-                    logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
-                    dump_event(current_state)
-                    notify_subscribers(current_state)
+                    if not g_is_masked:
+                        logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
+                        dump_event(current_state)
+                        notify_subscribers(current_state)
+                    else:
+                        logger.info('STATE HAS CHANGED! NOTIFICATIONS ARE DISABLED!')
 
             logger.info('CURRENT STATE (ONLINE): %s', current_state)
             logger.info('PING_INTERVAL: %s', ROUTER_REQUEST_INTERVAL)
