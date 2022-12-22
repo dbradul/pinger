@@ -1,14 +1,12 @@
 import copy
+import datetime
 import logging
 import os
+import paramiko
 import re
-import sys
-import traceback
-
 import requests
 import time
-import datetime
-import paramiko
+import traceback
 from datetime import datetime, timedelta
 from flask import request, Response
 from threading import Thread
@@ -77,19 +75,6 @@ def get_contact_keyboard(contact):
 
 def is_online():
     app.logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
-    # response = os.system(f"ping -c 1 -W {PING_TIMEOUT} {ip_address}")
-    # return response == 0
-
-    # try:
-    #     response = requests.get(f"http://{ip_address}:{port}", timeout=ROUTER_REQUEST_TIMEOUT)
-    #     result = response.status_code == 200
-    # except requests.exceptions.ConnectTimeout as ex:
-    #     app.logger.error(f"ROUTER REQUEST TIMEOUT: {ex}")
-    #     result = False
-    # except Exception as ex:
-    #     app.logger.error(f"ROUTER GENERAL ERROR: {ex}")
-    #     result = False
-    # return result
 
     result = False
     client = None
@@ -344,8 +329,6 @@ def ping():
 
 
 if __name__ == "__main__":
-    # context = ('server.crt', 'server.key')
-    # app.run(host='0.0.0.0', port=443, debug=True, ssl_context=context)
     Thread(target=post_start, daemon=True).start()
     Thread(target=ping, daemon=True).start()
     app.run(host='0.0.0.0', port=PORT, debug=False)

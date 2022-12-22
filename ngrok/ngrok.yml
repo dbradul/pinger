@@ -1,7 +1,0 @@
-web_addr: 0.0.0.0:4040
-update: false
-#log: stdout
-log: stdout
-log_level: info
-subdomain: gem4.kadorr
-authtoken: 1bwzk7ufVaUBsi5Gv1H8ghKT6Bc_SWUnQVw2un58J9FGjjaG

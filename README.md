@@ -1,4 +1,4 @@
 # Pinger #
 
-This app pings given ip address and provides Viber bot interface to manage the app.
+Viber bot that pings/ssh a given ip address to determine if it is up or down. 
 

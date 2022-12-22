@@ -5,6 +5,7 @@ env/
 data/
 logs/
 src/migrations
+ngrok/ngrok.yml
 !.flake8
 !.env.example
 !.gitignore

@@ -34,7 +34,6 @@ logs:
 
 create-migration:
 	cd src && pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
-#     pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
 
 apply-migration:
 	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db && cd ..
