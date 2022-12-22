@@ -12,6 +12,7 @@ python-dotenv = "*"
 peewee = "*"
 viberbot = "*"
 peewee-migrate = "*"
+paramiko = "*"
 
 [requires]
 python_version = "3.9"

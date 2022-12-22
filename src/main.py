@@ -7,6 +7,8 @@ import traceback
 
 import requests
 import time
+import datetime
+import paramiko
 from datetime import datetime, timedelta
 from flask import request, Response
 from threading import Thread
@@ -34,6 +36,8 @@ logging.basicConfig(level=logging.INFO, filename=log_file,
 PORT = os.getenv('PORT')
 API_TOKEN = os.getenv('API_TOKEN')
 ROUTER_IP = os.getenv('ROUTER_IP')
+ROUTER_USER = os.getenv('ROUTER_USER')
+ROUTER_PASSWORD = os.getenv('ROUTER_PASSWORD')
 ROUTER_PORT = os.getenv('ROUTER_PORT')
 ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
 ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_INTERVAL'))
@@ -71,19 +75,43 @@ def get_contact_keyboard(contact):
     return keyboard
 
 
-def is_online(ip_address, port):
-    app.logger.info(f"REQUESTING {ip_address}...")
+def is_online():
+    app.logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
     # response = os.system(f"ping -c 1 -W {PING_TIMEOUT} {ip_address}")
     # return response == 0
+
+    # try:
+    #     response = requests.get(f"http://{ip_address}:{port}", timeout=ROUTER_REQUEST_TIMEOUT)
+    #     result = response.status_code == 200
+    # except requests.exceptions.ConnectTimeout as ex:
+    #     app.logger.error(f"ROUTER REQUEST TIMEOUT: {ex}")
+    #     result = False
+    # except Exception as ex:
+    #     app.logger.error(f"ROUTER GENERAL ERROR: {ex}")
+    #     result = False
+    # return result
+
+    result = False
+    client = None
+
     try:
-        response = requests.get(f"http://{ip_address}:{port}", timeout=ROUTER_REQUEST_TIMEOUT)
-        result = response.status_code == 200
-    except requests.exceptions.ConnectTimeout as ex:
-        app.logger.error(f"ROUTER REQUEST TIMEOUT: {ex}")
-        result = False
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=ROUTER_IP,
+            username=ROUTER_USER,
+            password=ROUTER_PASSWORD,
+            port=ROUTER_PORT,
+            timeout=ROUTER_REQUEST_TIMEOUT,
+            allow_agent=False
+        )
+        result = True
     except Exception as ex:
         app.logger.error(f"ROUTER GENERAL ERROR: {ex}")
-        result = False
+    finally:
+        if client:
+            client.close()
+
     return result
 
 
@@ -284,7 +312,7 @@ def ping():
     probe_count = 0
     while True:
         try:
-            result = is_online(ROUTER_IP, ROUTER_PORT)
+            result = is_online()
             if current_state is None:
                 current_state = result
                 g_current_state = current_state

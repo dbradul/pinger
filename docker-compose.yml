@@ -13,7 +13,6 @@ services:
       - ./src:/app/src
       - ./data:/app/data
       - ./logs:/app/logs
-        #      - ./.env:/app/src/.env
     env_file:
       - .env
     logging:

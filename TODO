@@ -1,6 +1,13 @@
 - stress test of parallel requests
-- 2+ welcome messages
-- logs for bot
-- stats command
-- register new account and spin new instance
 - tests, refactoring
+
++ 2+ welcome messages
++ logs for bot
++ stats command
++ register new account and spin new instance
+- const name -> POLLING_INTERVAL
++ suffix -> tag
+- index for id
++ count field
++ history table
+- command for message broadcast
