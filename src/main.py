@@ -17,13 +17,14 @@ from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUn
 from viberbot.api.viber_requests import ViberFailedRequest
 from viberbot.api.viber_requests import ViberMessageRequest
 
-from app import app
-from helpers import ScopeRateLimiter
-from keyboards import *
-from models import Contact, History
+from app import create_app
+from pinger.helpers import ScopeRateLimiter
+from pinger.keyboards import *
+from pinger.models import Contact, History
 
 # logger = logging.getLogger(__name__)
 # logger.addHandler(logging.StreamHandler())
+app = create_app()
 log_file = './logs/bot.log'
 logger = app.logger
 # logger.addHandler(logging.StreamHandler())StreamHandler
