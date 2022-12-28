@@ -16,7 +16,7 @@ class Contact(Model):
         return f"{self.name}	{self.last_access}	{self.count_requests}"
 
     def __str__(self):
-        return f"{self.id}, {self.name}, {self.active}, {self.last_access}"
+        return f"{self.id}, {self.name}, {self.active}, {self.count_requests}"
 
 
 class History(Model):

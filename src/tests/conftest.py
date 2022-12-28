@@ -9,6 +9,7 @@ def app():
     })
 
     # other setup can go here
+    from src.pinger.models import db
 
     yield app
 
