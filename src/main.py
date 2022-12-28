@@ -128,7 +128,7 @@ def incoming():
                 app.logger.error(f"Contact {viber_request.sender.id} not found in DB!")
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
-                        text='Ваш контакт не знайдено. Спробуйте додатись до чату знову.',
+                        text='Ваш контакт не знайдено. Спробуйте видалитись та додатись до чату знову.',
                         # keyboard=keyboard
                     )
                 ])
@@ -151,11 +151,15 @@ def incoming():
         elif isinstance(viber_request, ViberConversationStartedRequest):
             contact = Contact.get_or_none(Contact.id == viber_request.user.id)
             if contact is None:
+                username = viber_request.user.name
+                invitation =  'Вітаю' if username == 'Subscriber' else \
+                             f'Вітаю, {viber_request.user.name}'
+
                 viber.send_messages(viber_request.user.id, [
                     TextMessage(
-                        text=f"Вітаю, {viber_request.user.name}! 🙌\n\n"
-                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.\n"
-                             "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'",
+                        text=f"{invitation}! 🙌\n\n"
+                             "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n"
+                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.",
                         keyboard=KBRD_SUBSCRIBE
                     )
                 ])

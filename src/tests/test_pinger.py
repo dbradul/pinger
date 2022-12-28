@@ -25,9 +25,6 @@ def test_db_concurrency(client):
             contact.count_requests += 1
             contact.save()
             print(f'Updated contact: {_} -> {contact}')
-        # contact = Contact.get(Contact.id == '123')
-        # contact.count_requests += 1
-        # contact.save()
         return True
 
     with ThreadPoolExecutor(max_workers=32) as executor:
@@ -37,4 +34,3 @@ def test_db_concurrency(client):
             )
 
     assert all(res)
-
