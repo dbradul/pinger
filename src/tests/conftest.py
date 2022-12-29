@@ -1,5 +1,6 @@
 import pytest
 from src.app import create_app
+# from app import create_app
 
 @pytest.fixture()
 def app():
@@ -9,7 +10,7 @@ def app():
     })
 
     # other setup can go here
-    from src.pinger.models import db
+    # from src.common.models import db
 
     yield app
 
