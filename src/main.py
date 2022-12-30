@@ -8,7 +8,7 @@ import requests
 import time
 import traceback
 from datetime import datetime, timedelta
-from flask import request, Response
+from flask import request, Response, render_template
 from threading import Thread
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
@@ -32,8 +32,9 @@ logging.basicConfig(level=logging.INFO, filename=log_file,
                     format="%(asctime)-15s %(threadName)s %(levelname)-8s %(message)s")
 
 
-PORT = os.getenv('PORT')
-API_TOKEN = os.getenv('API_TOKEN')
+FLASK_PORT = os.getenv('FLASK_PORT')
+FLASK_DEBUG = bool(os.getenv('FLASK_DEBUG'))
+VIBER_API_TOKEN = os.getenv('VIBER_API_TOKEN')
 ROUTER_IP = os.getenv('ROUTER_IP')
 ROUTER_USER = os.getenv('ROUTER_USER')
 ROUTER_PASSWORD = os.getenv('ROUTER_PASSWORD')
@@ -51,9 +52,9 @@ ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
 viber = Api(BotConfiguration(
-    name='gem4',
+    name='Світло 4-10',
     avatar='http://site.com/avatar.jpg',
-    auth_token=API_TOKEN
+    auth_token=VIBER_API_TOKEN
 ))
 
 g_current_state = None
@@ -104,8 +105,8 @@ def is_online():
 def post_start():
     logger.debug("Post start")
     time.sleep(BACKEND_STARTUP_DELAY)
-    requests.get(f'http://localhost:{PORT}/register')
-    requests.get(f'http://localhost:{PORT}/init_db')
+    requests.get(f'http://localhost:{FLASK_PORT}/register')
+    requests.get(f'http://localhost:{FLASK_PORT}/init_db')
 
 
 @app.route('/', methods=['POST'])
@@ -182,7 +183,7 @@ def incoming():
 def handle_message(viber_request, contact, keyboard):
     global g_is_masked
     message = viber_request.message
-    app.logger.info(f"MESSAGE: {message.text}")
+    app.logger.info(f"MESSAGE: {message.text}, CONTACT: {contact.id}")
 
     if message.text == MSG_QUESTION_TEXT:
         info = get_current_state_info(g_current_state)
@@ -267,6 +268,10 @@ def init_db():
     Contact.create_table()
     return 'OK - Created'
 
+@app.route('/invitation', methods=['GET'])
+def invitation():
+    logger.debug("received request. get data: {0}".format(request.get_data()))
+    return render_template('invitation.html')
 
 def dump_event(current_state):
     event = get_current_state_info(current_state)
@@ -336,4 +341,4 @@ def ping():
 if __name__ == "__main__":
     Thread(target=post_start, daemon=True).start()
     Thread(target=ping, daemon=True).start()
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    app.run(host='0.0.0.0', port=FLASK_PORT, debug=FLASK_DEBUG)
