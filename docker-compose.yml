@@ -7,7 +7,7 @@ services:
     restart: always
     command: python /app/src/main.py
     ports:
-      - "${PORT}:${PORT}"
+      - "${FLASK_PORT}:${FLASK_PORT}"
     volumes:
       - ./src:/app/src
       - ./data:/app/data
@@ -27,7 +27,7 @@ services:
       args:
         - NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
     restart: always
-    command: sh -c "/bin/ngrok http --config /root/ngrok.yml backend:${PORT} | tee /var/log/ngrok.log"
+    command: sh -c "/bin/ngrok http --config /root/ngrok.yml backend:${FLASK_PORT} | tee /var/log/ngrok.log"
     volumes:
       - ./logs:/var/log
     env_file:
