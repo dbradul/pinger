@@ -129,7 +129,7 @@ def incoming():
                 app.logger.error(f"Contact {viber_request.sender.id} not found in DB!")
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
-                        text='Ваш контакт не знайдено. Спробуйте видалитись та додатись до чату знову.',
+                        text='Ваш контакт не знайдено. Спробуйте видалити чат та додатись до нього знову.',
                         # keyboard=keyboard
                     )
                 ])
