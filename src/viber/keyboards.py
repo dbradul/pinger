@@ -97,11 +97,3 @@ KBRD_UNSUBSCRIBE = {
 }
 
 
-
-def get_admin_keyboard(is_masked):
-    label, action = [KBRD_BTN_UNMASK_LABEL, MSG_ADMIN_UNMASK_TEXT] if is_masked \
-               else [KBRD_BTN_MASK_LABEL,   MSG_ADMIN_MASK_TEXT]
-    KBRD_BTN_MASK_UNMASK['Text'] = label
-    KBRD_BTN_MASK_UNMASK['ActionBody'] = action
-    KBRD_BTN_ADMIN[0] = KBRD_BTN_MASK_UNMASK
-    return KBRD_BTN_ADMIN

@@ -12,7 +12,8 @@ def create_app():
 
     # import routes
     for url in routes.ROUTES:
-        app.add_url_rule(url, view_func=routes.ROUTES[url])
+        view_func, methods = routes.ROUTES[url]
+        app.add_url_rule(url, view_func=view_func, methods=methods)
 
     return app
 

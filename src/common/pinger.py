@@ -1,9 +1,8 @@
 import os
+import paramiko
 import time
 import traceback
 from threading import Thread
-
-import paramiko
 
 from common.helpers import Singleton
 from common.logger import logger
@@ -15,23 +14,10 @@ ROUTER_PORT = os.getenv('ROUTER_PORT')
 ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
 ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
-BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
+
 LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
 BOT_TAG = '📢'
-ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
-
-
-#
-# g_current_state = None
-# g_is_masked = False
-#
-
-# class PingListener:
-#     def notify(self, state):
-#         # raise MethodNotImplemented('Not Implemented')
-#         pass
-
 
 
 class Pinger(Singleton, Thread):
@@ -39,16 +25,18 @@ class Pinger(Singleton, Thread):
     masked = False
     _listeners = []
 
-    # def __init__(self):
-    #
-
     def add_listeners(self, *listeners):
         self._listeners.extend(listeners)
 
     def add_listener(self, listener):
-        self._listeners.append(listener)
+        self.add_listeners(self, [listener])
 
-    def check_availability(self):
+    def get_current_state_info(self, bot=False):
+        tag = BOT_TAG if bot else ""
+        state_info = LIGHT_ON if self.is_online else LIGHT_OFF
+        return f'{tag} {state_info}'
+
+    def _check_availability(self):
         logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
 
         result = False
@@ -71,15 +59,13 @@ class Pinger(Singleton, Thread):
         finally:
             if client:
                 client.close()
-
         return result
 
     def run(self):
         probe_count = 0
-
         while True:
             try:
-                result = self.check_availability()
+                result = self._check_availability()
                 if self.is_online is None:
                     self.is_online = result
                 else:
@@ -94,10 +80,8 @@ class Pinger(Singleton, Thread):
                         if not self.masked:
                             logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
                             for listener in self._listeners:
-                                # listener.notify(self.is_online)
-                                listener(self.is_online)
-                            # dump_event(current_state)
-                            # notify_subscribers(current_state)
+                                current_state_info = self.get_current_state_info(bot=True)
+                                listener(current_state_info)
                         else:
                             logger.info('STATE HAS CHANGED! NOTIFICATIONS ARE DISABLED!')
 

@@ -1,7 +1,7 @@
 from common.handlers import incoming, register, init_db
 
 ROUTES = {
-    '/': incoming,
-    '/register': register,
-    '/init_db': init_db,
+    '/': (incoming, ['POST']),
+    '/register': (register, ['GET']),
+    '/init_db': (init_db, ['GET']),
 }
