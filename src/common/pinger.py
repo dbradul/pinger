@@ -15,22 +15,12 @@ ROUTER_PORT = os.getenv('ROUTER_PORT')
 ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
 ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
-BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
-LIGHT_ON = 'Світло є'
-LIGHT_OFF = 'Світла немає'
-BOT_TAG = '📢'
-ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
+# BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
+# LIGHT_ON = 'Світло є'
+# LIGHT_OFF = 'Світла немає'
+# BOT_TAG = '📢'
+# ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
 
-
-#
-# g_current_state = None
-# g_is_masked = False
-#
-
-# class PingListener:
-#     def notify(self, state):
-#         # raise MethodNotImplemented('Not Implemented')
-#         pass
 
 
 
@@ -74,9 +64,9 @@ class Pinger(Singleton, Thread):
 
         return result
 
+
     def run(self):
         probe_count = 0
-
         while True:
             try:
                 result = self.check_availability()
