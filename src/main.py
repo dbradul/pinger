@@ -20,6 +20,7 @@ app = create_app()
 
 
 FLASK_PORT = os.getenv('FLASK_PORT')
+FLASK_DEBUG = bool(os.getenv('FLASK_DEBUG'))
 # API_TOKEN = os.getenv('API_TOKEN')
 # ROUTER_IP = os.getenv('ROUTER_IP')
 # ROUTER_USER = os.getenv('ROUTER_USER')
@@ -326,4 +327,4 @@ if __name__ == "__main__":
     pinger = Pinger()
     pinger.add_listeners(dump_event, notify_subscribers)
     pinger.start()
-    app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)
+    app.run(host='0.0.0.0', port=FLASK_PORT, debug=FLASK_DEBUG)

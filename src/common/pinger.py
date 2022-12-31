@@ -5,6 +5,7 @@ from threading import Thread
 
 import paramiko
 
+from common.helpers import Singleton
 from common.logger import logger
 
 ROUTER_IP = os.getenv('ROUTER_IP')
@@ -33,12 +34,13 @@ ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
 
 
 
-class Pinger(Thread):
+class Pinger(Singleton, Thread):
+    is_online = None
+    masked = False
+    _listeners = []
 
-    def __init__(self):
-        self.is_online = None
-        self.masked = False
-        self._listeners = []
+    # def __init__(self):
+    #
 
     def add_listeners(self, *listeners):
         self._listeners.extend(listeners)

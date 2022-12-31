@@ -15,6 +15,7 @@ from viberbot.api.viber_requests import ViberMessageRequest
 # from app import create_app
 from common.logger import logger
 from common.helpers import ScopeRateLimiter
+from common.pinger import Pinger
 from viber.keyboards import *
 from common.models import Contact, History
 from viber.bot import viber
@@ -125,7 +126,7 @@ def incoming():
                 logger.error(f"Contact {viber_request.sender.id} not found in DB!")
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
-                        text='Ваш контакт не знайдено. Спробуйте видалитись та додатись до чату знову.',
+                        text='Ваш контакт не знайдено. Спробуйте видалити чат та додатись до нього знову.',
                         # keyboard=keyboard
                     )
                 ])
@@ -179,10 +180,10 @@ def incoming():
 def handle_message(viber_request, contact, keyboard):
     global g_is_masked
     message = viber_request.message
-    logger.info(f"MESSAGE: {message.text}")
+    logger.info(f"MESSAGE: {message.text}, CONTACT: {contact.id}")
 
     if message.text == MSG_QUESTION_TEXT:
-        info = get_current_state_info(g_current_state)
+        info = get_current_state_info(Pinger.is_online)
         viber.send_messages(viber_request.sender.id, [
             TextMessage(
                 text=info,
@@ -291,5 +292,3 @@ def notify_subscribers(current_state):
         except Exception as e:
             logger.error(f"ERROR SENDING MESSAGE TO {contact.id}: {e}")
             logger.error(traceback.format_exc())
-
-

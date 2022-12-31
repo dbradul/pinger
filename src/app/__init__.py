@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask
 
 from app import routes
@@ -6,6 +8,7 @@ from app import routes
 def create_app():
     app = Flask(__name__)
     # app.config.from_object('src.config.Config')
+    app.logger.setLevel(logging.INFO)
 
     # import routes
     for url in routes.ROUTES:
