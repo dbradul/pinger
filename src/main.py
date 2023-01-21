@@ -58,6 +58,7 @@ viber = Api(BotConfiguration(
 ))
 
 g_current_state = None
+g_forced_state = None
 g_is_masked = False
 
 
@@ -71,12 +72,16 @@ def get_contact_keyboard(contact):
     keyboard = KBRD_UNSUBSCRIBE if (contact and contact.active) else KBRD_SUBSCRIBE
     if contact and contact.id in ADMIN_IDS:
         keyboard = copy.deepcopy(keyboard)
-        keyboard['Buttons'].extend(get_admin_keyboard(g_is_masked))
+        keyboard['Buttons'].extend(get_admin_keyboard(g_is_masked, g_forced_state))
     return keyboard
 
 
 def is_online():
     app.logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
+
+    if g_forced_state is not None:
+        app.logger.info(f"Forced state is returned: {g_forced_state}")
+        return g_forced_state
 
     result = False
     client = None
@@ -137,7 +142,7 @@ def incoming():
                 logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {viber_request.sender.id}')
                 viber.send_messages(viber_request.sender.id, [
                     TextMessage(
-                        text='_Перевищено ліміт повідомлень. Спробуйте пізніше._',
+                        text='_Перевищено ліміт запитів. Спробуйте пізніше._',
                         keyboard=keyboard
                     )
                 ])
@@ -182,6 +187,8 @@ def incoming():
 
 def handle_message(viber_request, contact, keyboard):
     global g_is_masked
+    global g_forced_state
+
     message = viber_request.message
     app.logger.info(f"MESSAGE: {message.text}, CONTACT: {contact.id}")
 
@@ -239,6 +246,29 @@ def handle_message(viber_request, contact, keyboard):
                 keyboard=keyboard
             )
         ])
+
+    elif message.text in (MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT):
+        g_forced_state = True if message.text == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT else False
+        app.logger.info(f"Enabling forced state: {g_forced_state}")
+        keyboard = get_contact_keyboard(contact)
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Forced state: {"DISABLED" if g_forced_state is None else ["FALSE", "TRUE"][g_forced_state]}',
+                keyboard=keyboard
+            )
+        ])
+
+    elif message.text in (MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT):
+        g_forced_state = None
+        app.logger.info(f"Disabling forced state: {g_forced_state}")
+        keyboard = get_contact_keyboard(contact)
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Forced state: {"DISABLED" if g_forced_state is None else ["FALSE", "TRUE"][g_forced_state]}',
+                keyboard=keyboard
+            )
+        ])
+
     return True
 
 
@@ -266,6 +296,7 @@ def register():
 def init_db():
     logger.debug("received request. get data: {0}".format(request.get_data()))
     Contact.create_table()
+    History.create_table()
     return 'OK - Created'
 
 @app.route('/invitation', methods=['GET'])
@@ -341,4 +372,4 @@ def ping():
 if __name__ == "__main__":
     Thread(target=post_start, daemon=True).start()
     Thread(target=ping, daemon=True).start()
-    app.run(host='0.0.0.0', port=FLASK_PORT, debug=FLASK_DEBUG)
+    app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)
