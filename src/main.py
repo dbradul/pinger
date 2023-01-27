@@ -276,6 +276,7 @@ def handle_message(viber_request, contact, keyboard):
             for outlier in outliers:
                 contact_id = outlier.strip()
                 contact = Contact.get_or_none(Contact.id == contact_id)
+                app.logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
                 keyboard = get_contact_keyboard(contact)
                 viber.send_messages(contact_id, [
                     TextMessage(
@@ -283,12 +284,6 @@ def handle_message(viber_request, contact, keyboard):
                         keyboard=keyboard
                     )
                 ])
-                # viber.send_messages(contact_id, [
-                #     TextMessage(
-                #         text="Якщо це повторне повідомлення, ігноруйте його. Фактично світло є з 16:05. Вибачаюсь за затримку, у мене перегрілись мікросхеми 🤖!",
-                #         keyboard=keyboard
-                #     )
-                # ])
 
     return True
 
