@@ -109,6 +109,7 @@ def _handle_message(viber_request, contact, keyboard):
         contact.count_requests += 1
         contact.last_access = datetime.utcnow()
         contact.save()
+
     elif message.text == MSG_SUBSCRIBE_TEXT:
         contact.active = True
         contact.last_access = datetime.utcnow()
@@ -121,6 +122,7 @@ def _handle_message(viber_request, contact, keyboard):
                 keyboard=keyboard
             )
         ])
+
     elif message.text == MSG_UNSUBSCRIBE_TEXT:
         contact.active = False
         contact.last_access = datetime.utcnow()
@@ -133,6 +135,7 @@ def _handle_message(viber_request, contact, keyboard):
                 keyboard=keyboard
             )
         ])
+
     elif message.text == MSG_ADMIN_STATS_TEXT:
         contacts = Contact.filter(Contact.active == True).order_by(Contact.last_access.desc()).objects()
         # result = '\n'.join([c.info() for c in contacts])
@@ -144,6 +147,7 @@ def _handle_message(viber_request, contact, keyboard):
                     keyboard=keyboard
                 )
             ])
+
     elif message.text in (MSG_ADMIN_MASK_TEXT, MSG_ADMIN_UNMASK_TEXT):
         # g_is_masked = not g_is_masked
         # viber.is_masked = not viber.is_masked
@@ -156,6 +160,31 @@ def _handle_message(viber_request, contact, keyboard):
                 keyboard=keyboard
             )
         ])
+
+    elif message.text in (MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT):
+        pinger.forced_state = message.text == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+        logger.info(f"Enabling forced state: {pinger.forced_state}")
+        keyboard = viber.get_contact_keyboard(contact)
+        forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Forced state: {forced_state_str}',
+                keyboard=keyboard
+            )
+        ])
+
+    elif message.text in (MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT):
+        pinger.forced_state = None
+        logger.info(f"Disabling forced state: {pinger.forced_state}")
+        forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
+        keyboard = viber.get_contact_keyboard(contact)
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Forced state: {forced_state_str}',
+                keyboard=keyboard
+            )
+        ])
+
     return True
 
 
@@ -167,16 +196,16 @@ def register():
     with open(log_path) as f:
         # content = f.read()
         for line in f.readlines():
-                m = re.match('.*msg="started tunnel" .*url=https://(.*)$', line)
-                if m:
-                    try:
-                        ngrok_url = m.groups(0)[0]
-                        viber.set_webhook('https://' + ngrok_url)
-                        logger.info(f"SELF REGISTERING DONE: {ngrok_url}")
-                        break
-                    except Exception as e:
-                        logger.error(f"SELF REGISTERING ERROR: {e}")
-                        logger.error(traceback.format_exc())
+            m = re.match('.*msg="started tunnel" .*url=https://(.*)$', line)
+            if m:
+                try:
+                    ngrok_url = m.groups(0)[0]
+                    viber.set_webhook('https://' + ngrok_url)
+                    logger.info(f"SELF REGISTERING DONE: {ngrok_url}")
+                    break
+                except Exception as e:
+                    logger.error(f"SELF REGISTERING ERROR: {e}")
+                    logger.error(traceback.format_exc())
         else:
             logger.error('URL IS NOT RECOGNIZED')
 
@@ -189,30 +218,3 @@ def init_db():
     Contact.create_table()
     History.create_table()
     return 'OK - Created'
-
-#
-# def dump_event(current_state_info):
-#     History.create(event_date=datetime.utcnow(), event_type=current_state_info)
-#
-#
-# def notify_subscribers(current_state_info):
-#     look_back_window = datetime.utcnow() - timedelta(minutes=0)
-#     contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
-#     logger.info(f"SUBSCRIBERS TO NOTIFY: {contacts.count()}")
-#     # for i in range(100):
-#     for contact in contacts:
-#         try:
-#             logger.info(f"  SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
-#             keyboard = viber.get_contact_keyboard(contact)
-#             viber.send_messages(contact.id, [
-#                 TextMessage(
-#                     # text=get_current_state_info(current_state, bot=True) + f" ({i})",
-#                     text=current_state_info,
-#                     keyboard=keyboard
-#                 )
-#             ])
-#             contact.last_access = datetime.utcnow()
-#             contact.save()
-#         except Exception as e:
-#             logger.error(f"ERROR SENDING MESSAGE TO {contact.id}: {e}")
-#             logger.error(traceback.format_exc())

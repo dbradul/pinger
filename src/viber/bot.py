@@ -55,6 +55,22 @@ class ViberBot(Singleton, Api):
         KBRD_BTN_MASK_UNMASK['Text'] = label
         KBRD_BTN_MASK_UNMASK['ActionBody'] = action
         KBRD_BTN_ADMIN[0] = KBRD_BTN_MASK_UNMASK
+
+        if pinger.forced_state is None:
+            KBRD_BTN_ADMIN[2]['Text'] = KBRD_BTN_FORCED_STATE_ONLINE_LABEL
+            KBRD_BTN_ADMIN[2]['ActionBody'] = MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+            KBRD_BTN_ADMIN[3]['Text'] = KBRD_BTN_FORCED_STATE_OFFLINE_LABEL
+            KBRD_BTN_ADMIN[3]['ActionBody'] = MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
+        elif pinger.forced_state is True:
+            KBRD_BTN_ADMIN[2]['Text'] = KBRD_BTN_FORCED_STATE_ONLINE_LABEL_DISABLE
+            KBRD_BTN_ADMIN[2]['ActionBody'] = MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT
+            KBRD_BTN_ADMIN[3]['Text'] = KBRD_BTN_FORCED_STATE_OFFLINE_LABEL
+            KBRD_BTN_ADMIN[3]['ActionBody'] = MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
+        elif pinger.forced_state is False:
+            KBRD_BTN_ADMIN[2]['Text'] = KBRD_BTN_FORCED_STATE_ONLINE_LABEL
+            KBRD_BTN_ADMIN[2]['ActionBody'] = MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+            KBRD_BTN_ADMIN[3]['Text'] = KBRD_BTN_FORCED_STATE_OFFLINE_LABEL_DISABLE
+            KBRD_BTN_ADMIN[3]['ActionBody'] = MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT
         return KBRD_BTN_ADMIN
 
     def dump_event(self, current_state_info):

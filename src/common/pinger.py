@@ -23,6 +23,7 @@ BOT_TAG = '📢'
 class Pinger(Singleton, Thread):
     is_online = None
     masked = False
+    forced_state = None
     _listeners = []
 
     def add_listeners(self, *listeners):
@@ -38,6 +39,10 @@ class Pinger(Singleton, Thread):
 
     def _check_availability(self):
         logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
+
+        if self.forced_state is not None:
+            logger.info(f"Forced state is returned: {self.forced_state}")
+            return self.forced_state
 
         result = False
         client = None
