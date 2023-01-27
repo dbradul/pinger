@@ -269,6 +269,26 @@ def handle_message(viber_request, contact, keyboard):
             )
         ])
 
+    elif message.text == MSG_ADMIN_FORCED_RESEND_TEXT:
+        with open('./data/outliers.txt', 'r') as f:
+            outliers = f.read().splitlines()
+            for outlier in outliers:
+                outlier = outlier.split(',')
+                viber.send_messages(outlier[0], [
+                    TextMessage(
+                        text=outlier[1],
+                        keyboard=keyboard
+                    )
+                ])
+        app.logger.info(f"Disabling forced state: {g_forced_state}")
+        keyboard = get_contact_keyboard(contact)
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(
+                text=f'Forced state: {"DISABLED" if g_forced_state is None else ["FALSE", "TRUE"][g_forced_state]}',
+                keyboard=keyboard
+            )
+        ])
+
     return True
 
 
