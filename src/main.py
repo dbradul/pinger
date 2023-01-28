@@ -7,6 +7,7 @@ import re
 import requests
 import time
 import traceback
+import random
 from datetime import datetime, timedelta
 from flask import request, Response, render_template
 from threading import Thread
@@ -47,6 +48,7 @@ LIGHT_ON = 'Світло є'
 LIGHT_OFF = 'Світла немає'
 BOT_TAG = '📢'
 ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
+OUTLIERS_FILEPATH = os.getenv('OUTLIERS_FILEPATH')
 
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
@@ -60,6 +62,14 @@ viber = Api(BotConfiguration(
 g_current_state = None
 g_forced_state = None
 g_is_masked = False
+
+
+def scream(msg): # noqa
+    logger.info(f"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    logger.info(f"\n")
+    logger.info(msg)
+    logger.info(f"\n")
+    logger.info(f"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
 def get_current_state_info(current_state, bot=False):
@@ -77,11 +87,11 @@ def get_contact_keyboard(contact):
 
 
 def is_online():
-    app.logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
-
     if g_forced_state is not None:
         app.logger.info(f"Forced state is returned: {g_forced_state}")
         return g_forced_state
+
+    app.logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
 
     result = False
     client = None
@@ -271,19 +281,35 @@ def handle_message(viber_request, contact, keyboard):
 
     elif message.text == MSG_ADMIN_FORCED_RESEND_TEXT:
         current_state = get_current_state_info(g_current_state, bot=True)
-        with open('./data/outliers.txt', 'r') as f:
+        failed_outliers = []
+        with open(OUTLIERS_FILEPATH, 'r') as f:
             outliers = f.read().splitlines()
             for outlier in outliers:
                 contact_id = outlier.strip()
                 contact = Contact.get_or_none(Contact.id == contact_id)
-                app.logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
                 keyboard = get_contact_keyboard(contact)
-                viber.send_messages(contact_id, [
-                    TextMessage(
-                        text=current_state,
-                        keyboard=keyboard
-                    )
-                ])
+                app.logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
+                try:
+                    # if random.randint(1, 10) <= 5:
+                    #     raise Exception('TEST error')
+                    viber.send_messages(contact_id, [
+                        TextMessage(
+                            text=current_state,
+                            keyboard=keyboard
+                        )
+                    ])
+                except Exception as e:
+                    app.logger.error(f'RESEND FAILED WITH ERROR: {e}')
+                    failed_outliers.append(contact_id)
+                    logger.error(traceback.format_exc())
+
+        if failed_outliers:
+            scream(f"DUMPING FAILED OUTLIERS: {len(failed_outliers)} contacts")
+        else:
+            scream(f"RESEND IS SUCCESSFUL! NO FAILED OUTLIERS!")
+
+        with open(OUTLIERS_FILEPATH, 'w') as f:
+            f.write('\n'.join(failed_outliers))
 
     return True
 
@@ -315,10 +341,12 @@ def init_db():
     History.create_table()
     return 'OK - Created'
 
+
 @app.route('/invitation', methods=['GET'])
 def invitation():
     logger.debug("received request. get data: {0}".format(request.get_data()))
     return render_template('invitation.html')
+
 
 def dump_event(current_state):
     event = get_current_state_info(current_state)
@@ -329,23 +357,48 @@ def notify_subscribers(current_state):
     look_back_window = datetime.utcnow() - timedelta(minutes=0)
     contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
     logger.info(f"SUBSCRIBERS TO NOTIFY: {contacts.count()}")
-    # for i in range(100):
-    for contact in contacts:
+
+    contacts = list(contacts)
+    # contacts = contacts*30
+    remained_attempts = len(contacts)
+
+    current_state_info = get_current_state_info(current_state, bot=True)
+    # for contact in contacts:
+    while contacts:
+        if remained_attempts <= 0:
+            break
+
+        contact = contacts.pop(0)
+        logger.info(f"  SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
+        keyboard = get_contact_keyboard(contact)
         try:
-            logger.info(f"  SENDING NOTIFICATION TO CONTACT: {contact.name}, {contact.id}")
-            keyboard = get_contact_keyboard(contact)
+            # if random.randint(1, 10) <= 5:
+            #     raise Exception('TEST EXCEPTION')
             viber.send_messages(contact.id, [
                 TextMessage(
                     # text=get_current_state_info(current_state, bot=True) + f" ({i})",
-                    text=get_current_state_info(current_state, bot=True),
+                    text=current_state_info,
                     keyboard=keyboard
                 )
             ])
-            contact.last_access = datetime.utcnow()
-            contact.save()
+            # contact.last_access = datetime.utcnow()
+            # contact.save()
         except Exception as e:
-            logger.error(f"ERROR SENDING MESSAGE TO {contact.id}: {e}")
+            logger.error(f"ERROR SENDING NOTIFICATION TO {contact.id}: {e}")
             logger.error(traceback.format_exc())
+            logger.info(f"  QUEUEING CONTACT FOR RETRYING: {contact.name}, {contact.id}")
+            contacts.append(contact)
+            logger.info(f"  QUEUE SIZE: {len(contacts)}")
+            remained_attempts -= 1
+            logger.info(f"  REMAINED ATTEMPTS: {remained_attempts}")
+            # time.sleep(0.025)
+
+    if contacts:
+        scream(f"Couldn't send to {len(contacts)} contacts, dumping to outliers.txt")
+        with open(OUTLIERS_FILEPATH, 'w+') as f:
+            f.writelines([f'{c.id}\n' for c in contacts])
+    else:
+        scream(f"SUCCESSFULLY SENT TO ALL SUBSCRIBERS!")
 
 
 def ping():
@@ -386,6 +439,6 @@ def ping():
 
 
 if __name__ == "__main__":
-    Thread(target=post_start, daemon=True).start()
     Thread(target=ping, daemon=True).start()
+    Thread(target=post_start, daemon=True).start()
     app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)
