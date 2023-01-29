@@ -2,10 +2,12 @@ import logging
 
 from flask import Flask
 
-from app import routes
+
 
 
 def create_app():
+    from app import routes
+
     app = Flask(__name__)
     # app.config.from_object('src.config.Config')
     app.logger.setLevel(logging.INFO)

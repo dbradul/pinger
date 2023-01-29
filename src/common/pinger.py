@@ -30,7 +30,7 @@ class Pinger(Singleton, Thread):
         self._listeners.extend(listeners)
 
     def add_listener(self, listener):
-        self.add_listeners(self, [listener])
+        self.add_listeners(listener)
 
     def get_current_state_info(self, bot=False):
         tag = BOT_TAG if bot else ""
@@ -38,11 +38,11 @@ class Pinger(Singleton, Thread):
         return f'{tag} {state_info}'
 
     def _check_availability(self):
-        logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
-
         if self.forced_state is not None:
             logger.info(f"Forced state is returned: {self.forced_state}")
             return self.forced_state
+
+        logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
 
         result = False
         client = None

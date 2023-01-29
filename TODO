@@ -1,13 +1,13 @@
-- stress test of parallel requests
++ stress test of parallel requests
 - tests, refactoring
 
 + 2+ welcome messages
 + logs for bot
 + stats command
 + register new account and spin new instance
-- const name -> POLLING_INTERVAL
++ const name -> POLLING_INTERVAL
 + suffix -> tag
-- index for id
++ index for id
 + count field
 + history table
-- command for message broadcast
++ command for message broadcast
