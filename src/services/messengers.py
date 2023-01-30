@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import traceback
 
+from peewee import fn
+
 from services.bot import MessengerBot
 from common.helpers import ThreadSafeSingleton
 from common.pinger import Pinger
@@ -28,7 +30,10 @@ class MessengerService(metaclass=ThreadSafeSingleton):
         self.current_state_info = new_state
         self.dump_event(new_state)
         look_back_window = datetime.utcnow() - timedelta(minutes=0)
-        contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
+        contacts = Contact\
+            .filter(Contact.active == True, Contact.last_access <= look_back_window)\
+            .order_by(fn.Random())\
+            .objects()
         contact_service = ViberContactService()
         logger.info(f"SUBSCRIBERS TO NOTIFY: {contacts.count()}")
         for contact in contacts:

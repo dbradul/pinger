@@ -2,6 +2,7 @@ import copy
 import os
 from datetime import datetime
 
+from common.models import Contact
 from common.pinger import Pinger
 from viber.keyboards import *
 
@@ -9,7 +10,6 @@ ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
 
 pinger = Pinger()
 
-#
 # class ContactService:
 #
 #     def __init__(self, contact_repository):
@@ -36,28 +36,36 @@ pinger = Pinger()
 #         self.contact_repository.last_access = datetime.utcnow()
 #         self.contact_repository.save()
 
+
 class ContactService:
 
-    def get_keyboard(self, contact):
+    def get_keyboard(self, contact: Contact):
         raise NotImplementedError('get_keyboard method must be implemented')
 
-    def get_admin_keyboard(self, contact):
+    def get_admin_keyboard(self, contact: Contact):
         raise NotImplementedError('get_admin_keyboard method must be implemented')
 
-    def subscribe(self, contact):
+    def subscribe(self, contact: Contact) -> None:
         contact.active = True
         contact.last_access = datetime.utcnow()
         contact.save()
 
-    def unsubscribe(self, contact):
+    def unsubscribe(self, contact: Contact) -> None:
         contact.active = False
         contact.last_access = datetime.utcnow()
         contact.save()
 
-    def touch(self, contact):
+    def touch(self, contact: Contact) -> None:
         contact.count_requests += 1
         contact.last_access = datetime.utcnow()
         contact.save()
+
+    def get_recently_active_users(self, limit: int = 10):
+        return Contact\
+            .filter(Contact.active == True)\
+            .order_by(Contact.last_access.desc())\
+            .limit(limit)\
+            .objects()
 
 
 class ViberContactService(ContactService):

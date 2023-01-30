@@ -3,6 +3,7 @@ import re
 import traceback
 from datetime import datetime
 from flask import request, Response
+from peewee import fn
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 from viberbot.api.viber_requests import ViberFailedRequest
 from viberbot.api.viber_requests import ViberMessageRequest
@@ -66,8 +67,7 @@ def incoming(
                     message='_Перевищено ліміт повідомлень. Спробуйте пізніше._'
                 )
             else:
-                # _handle_message(viber_request, contact, keyboard, contact_service)
-                _handle_message(viber_request, contact)
+                _handle_chat_message(viber_request.message.text, contact)
 
         elif isinstance(viber_request, ViberUnsubscribedRequest):
             contact = Contact.get_or_none(Contact.id == viber_request.user_id)
@@ -105,81 +105,78 @@ def incoming(
 
 
 @inject
-def _handle_message(
-        viber_request,
+def _handle_chat_message(
+        message: str,
         contact: Contact,
         contact_service: ContactService = Provide[Container.contact_service],
         messenger_bot: MessengerBot = Provide[Container.messenger_bot]
 ) -> None:
-
-    message = viber_request.message
-    logger.info(f"MESSAGE: {message.text}, CONTACT: {contact.id}")
-    # contact_service = ViberContactService()
+    logger.info(f"MESSAGE: {message}, CONTACT: {contact.id}, {contact.name}")
     keyboard = contact_service.get_keyboard(contact)
+    contact_id = contact.id
 
-    if message.text == MSG_QUESTION_TEXT:
+    if message == MSG_QUESTION_TEXT:
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message=pinger.get_current_state_info(),
             keyboard=keyboard
         )
         contact_service.touch(contact)
 
-    elif message.text == MSG_SUBSCRIBE_TEXT:
+    elif message == MSG_SUBSCRIBE_TEXT:
         contact_service.subscribe(contact)
         keyboard = contact_service.get_keyboard(contact)
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message='Підписано на розсилку',
             keyboard=keyboard
         )
 
-    elif message.text == MSG_UNSUBSCRIBE_TEXT:
+    elif message == MSG_UNSUBSCRIBE_TEXT:
         contact_service.unsubscribe(contact)
         keyboard = contact_service.get_keyboard(contact)
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message='Відписано від розсилки',
             keyboard=keyboard
         )
 
-    elif message.text == MSG_ADMIN_STATS_TEXT:
-        contacts = Contact.filter(Contact.active == True).order_by(Contact.last_access.desc()).objects()
-        for c in contacts:
-            message = f'```{c.formatted_info()}```'
+    elif message == MSG_ADMIN_STATS_TEXT:
+        contacts = contact_service.get_recently_active_users()
+        for contact in contacts:
             messenger_bot.send_message(
-                contact_id=viber_request.sender.id,
-                message=message,
+                contact_id=contact_id,
+                message=f'```{contact.formatted_info()}```',
                 keyboard=keyboard
             )
 
-    elif message.text in (MSG_ADMIN_MASK_TEXT, MSG_ADMIN_UNMASK_TEXT):
+    elif message in (MSG_ADMIN_MASK_TEXT, MSG_ADMIN_UNMASK_TEXT):
         pinger.masked = not pinger.masked
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message=f'Розсилка повідомлень: {"ВИМКНЕНО" if pinger.masked else "УВІМКНЕНО"}!',
             keyboard=keyboard
         )
 
-    elif message.text in (MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT):
+    elif message in (MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT):
         logger.info(f"Enabling forced state: {pinger.forced_state}")
-        pinger.forced_state = message.text == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+        pinger.forced_state = message == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message=f'Forced state: {forced_state_str}',
             keyboard=keyboard
         )
 
-    elif message.text in (MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT):
+    elif message in (MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT):
         logger.info(f"Disabling forced state: {pinger.forced_state}")
         pinger.forced_state = None
         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         messenger_bot.send_message(
-            contact_id=viber_request.sender.id,
+            contact_id=contact_id,
             message=f'Forced state: {forced_state_str}',
             keyboard=keyboard
         )
