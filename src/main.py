@@ -11,6 +11,8 @@ import random
 from datetime import datetime, timedelta
 from flask import request, Response, render_template
 from threading import Thread
+
+from peewee import fn
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.messages.text_message import TextMessage
@@ -355,7 +357,11 @@ def dump_event(current_state):
 
 def notify_subscribers(current_state):
     look_back_window = datetime.utcnow() - timedelta(minutes=0)
-    contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
+    # contacts = Contact.filter(Contact.active == True, Contact.last_access <= look_back_window).objects()
+    contacts = Contact \
+        .filter(Contact.active == True, Contact.last_access <= look_back_window) \
+        .order_by(fn.Random()) \
+        .objects()
     logger.info(f"SUBSCRIBERS TO NOTIFY: {contacts.count()}")
 
     contacts = list(contacts)
