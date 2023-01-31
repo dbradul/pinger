@@ -9,6 +9,8 @@ class MessengerBot:
 
     def __init__(self, api_client: Any = None):
         self._api_client = api_client
+        self.masked = False
+        self.forced_state = None
 
     def send_message(self, contact_id, message, keyboard=None):
         raise NotImplementedError('send_message method must be implemented')

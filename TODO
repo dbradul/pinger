@@ -11,3 +11,8 @@
 + count field
 + history table
 + command for message broadcast
+
+
+- move forced from Pinger to RemoteHost
+- move forced from Pinger to listeners manipulation
+- extract message handling into separate class, e.g. MessageDispatcher

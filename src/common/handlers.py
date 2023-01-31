@@ -2,36 +2,23 @@ import datetime
 import re
 import traceback
 from datetime import datetime
+
+from dependency_injector.wiring import Provide, inject
 from flask import request, Response
-from peewee import fn
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 from viberbot.api.viber_requests import ViberFailedRequest
 from viberbot.api.viber_requests import ViberMessageRequest
 
-from dependency_injector.wiring import Provide, inject
-from pinger.containers import Container
-
-
-# from services.backends import ViberBotBackend
+from app.containers import Container
 from common.helpers import ScopeRateLimiter
-# from app import create_app
 from common.logger import logger
 from common.models import Contact, History
-from common.pinger import Pinger
 from services import MessengerBot
-from services.contacts import ContactService
-from services.messengers import MessengerService
-# from viber.bot import viber
-# from viber.bot import ViberBot
+from services.contact import ContactService
+from services.pinger import Pinger
 from viber.keyboards import *
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
-# viber = ViberBot()
-# viber = ViberBotBackend()
-# messenger = MessengerService()
-pinger = Pinger()
-
-
 
 
 # @app.route('/', methods=['POST'])
@@ -104,12 +91,14 @@ def incoming(
     return Response(status=200)
 
 
+
 @inject
 def _handle_chat_message(
         message: str,
         contact: Contact,
         contact_service: ContactService = Provide[Container.contact_service],
-        messenger_bot: MessengerBot = Provide[Container.messenger_bot]
+        messenger_bot: MessengerBot = Provide[Container.messenger_bot],
+        pinger: Pinger = Provide[Container.pinger],
 ) -> None:
     logger.info(f"MESSAGE: {message}, CONTACT: {contact.id}, {contact.name}")
     keyboard = contact_service.get_keyboard(contact)
@@ -121,7 +110,7 @@ def _handle_chat_message(
             message=pinger.get_current_state_info(),
             keyboard=keyboard
         )
-        contact_service.touch(contact)
+        contact_service.increase_requests_counter(contact)
 
     elif message == MSG_SUBSCRIBE_TEXT:
         contact_service.subscribe(contact)
@@ -152,6 +141,7 @@ def _handle_chat_message(
 
     elif message in (MSG_ADMIN_MASK_TEXT, MSG_ADMIN_UNMASK_TEXT):
         pinger.masked = not pinger.masked
+        messenger_bot.masked = not messenger_bot.masked
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         messenger_bot.send_message(
             contact_id=contact_id,
@@ -162,6 +152,7 @@ def _handle_chat_message(
     elif message in (MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT):
         logger.info(f"Enabling forced state: {pinger.forced_state}")
         pinger.forced_state = message == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+        messenger_bot.forced_state = message == MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
         messenger_bot.send_message(
@@ -173,6 +164,7 @@ def _handle_chat_message(
     elif message in (MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT, MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT):
         logger.info(f"Disabling forced state: {pinger.forced_state}")
         pinger.forced_state = None
+        messenger_bot.forced_state = None
         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
         keyboard = contact_service.get_keyboard(contact)  # FIXME: indirect dependency from pinger
         messenger_bot.send_message(

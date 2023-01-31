@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from peewee import *
 
 db = SqliteDatabase('./data/contacts.db')
@@ -17,6 +19,10 @@ class Contact(Model):
 
     def __str__(self):
         return f"{self.id}, {self.name}, {self.active}, {self.count_requests}"
+
+    def save(self, *args, **kwargs):
+        self.last_access = datetime.utcnow()
+        super(Contact, self).save(*args, **kwargs)
 
 
 class History(Model):

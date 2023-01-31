@@ -1,17 +1,13 @@
 import os
-import paramiko
 import time
 import traceback
 from threading import Thread
+from typing import List
 
-from common.helpers import Singleton
 from common.logger import logger
+from common.remote_host import RemoteHost
+from services import PingerListener
 
-ROUTER_IP = os.getenv('ROUTER_IP')
-ROUTER_USER = os.getenv('ROUTER_USER')
-ROUTER_PASSWORD = os.getenv('ROUTER_PASSWORD')
-ROUTER_PORT = os.getenv('ROUTER_PORT')
-ROUTER_REQUEST_TIMEOUT = float(os.getenv('ROUTER_REQUEST_TIMEOUT'))
 ROUTER_REQUEST_INTERVAL = float(os.getenv('ROUTER_REQUEST_INTERVAL'))
 PROBE_COUNT_LIMIT = float(os.getenv('PROBE_COUNT_LIMIT'))
 
@@ -20,16 +16,21 @@ LIGHT_OFF = 'Світла немає'
 BOT_TAG = '📢'
 
 
-class Pinger(Singleton, Thread):
-    is_online = None
-    masked = False
-    forced_state = None
-    _listeners = []
+class Pinger(Thread):
+    is_online: bool = None
+    masked: bool = False
+    forced_state: bool = None
+    _listeners: List[PingerListener] = []
 
+    def __init__(self, remote_host: RemoteHost, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.remote_host = remote_host
+
+    # def add_listeners(self, *listeners: List[PingerListener]):
     def add_listeners(self, *listeners):
         self._listeners.extend(listeners)
 
-    def add_listener(self, listener):
+    def add_listener(self, listener: PingerListener):
         self.add_listeners(listener)
 
     def get_current_state_info(self, bot=False):
@@ -41,30 +42,8 @@ class Pinger(Singleton, Thread):
         if self.forced_state is not None:
             logger.info(f"Forced state is returned: {self.forced_state}")
             return self.forced_state
-
-        logger.info(f"REQUESTING ROUTER {ROUTER_IP}...")
-
-        result = False
-        client = None
-
-        try:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(
-                hostname=ROUTER_IP,
-                username=ROUTER_USER,
-                password=ROUTER_PASSWORD,
-                port=ROUTER_PORT,
-                timeout=ROUTER_REQUEST_TIMEOUT,
-                allow_agent=False
-            )
-            result = True
-        except Exception as ex:
-            logger.error(f"ROUTER GENERAL ERROR: {ex}")
-        finally:
-            if client:
-                client.close()
-        return result
+        logger.info(f"REQUESTING ROUTER {self.remote_host.host}...")
+        return self.remote_host.is_online()
 
     def run(self):
         probe_count = 0
@@ -83,10 +62,10 @@ class Pinger(Singleton, Thread):
                         probe_count = 0
                         self.is_online = result
                         if not self.masked:
-                            logger.info('STATE HAS CHANGED! NOTIFYING SUBSCRIBERS!')
+                            logger.info('STATE HAS CHANGED! NOTIFYING LISTENERS!')
                             for listener in self._listeners:
                                 current_state_info = self.get_current_state_info(bot=True)
-                                listener(current_state_info)
+                                listener.on_state_change(current_state_info)
                         else:
                             logger.info('STATE HAS CHANGED! NOTIFICATIONS ARE DISABLED!')
 

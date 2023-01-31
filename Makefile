@@ -29,6 +29,9 @@ startd:
 top:
 	docker compose top
 
+ps:
+	docker compose ps
+
 logs:
 	docker compose logs -f
 

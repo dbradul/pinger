@@ -1,11 +1,13 @@
-from . contacts import (
-    ContactService,
-    ViberContactService,
-    TelegramContactService
-)
-from . bot import (
+from . messenger_bot import (
     MessengerBot,
     ViberMessengerBot,
     TelegramMessengerBot
 )
-from . messengers import MessengerService
+from . contact import (
+    ContactService,
+    ViberContactService,
+    TelegramContactService
+)
+from . history import HistoryService
+from . listeners import PingerListener
+from . pinger import Pinger
