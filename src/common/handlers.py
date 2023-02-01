@@ -35,54 +35,163 @@ def incoming(
             return Response(status=403)
 
         # viber_request = viber.parse_request(request.get_data())
-        viber_request = messenger_bot.parse_request(request.get_data())
+        bot_request = messenger_bot.parse_request(request.get_data())
 
-        if isinstance(viber_request, ViberMessageRequest):
-            allowed = rate_limiter.check_limits(scope=viber_request.sender.id)
-            contact = Contact.get_or_none(Contact.id == viber_request.sender.id)
+        if isinstance(bot_request, ViberMessageRequest):
+            allowed = rate_limiter.check_limits(scope=bot_request.sender.id)
+            contact = Contact.get_or_none(Contact.id == bot_request.sender.id)
 
             if contact is None:
-                logger.error(f"Contact {viber_request.sender.id} not found in DB!")
+                logger.error(f"Contact {bot_request.sender.id} not found in DB!")
                 messenger_bot.send_message(
-                    contact_id=viber_request.sender.id,
+                    contact_id=bot_request.sender.id,
                     message='Ваш контакт не знайдено. Спробуйте видалити чат та додатись до нього знову.'
                 )
             elif not allowed:
-                logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {viber_request.sender.id}')
+                logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {bot_request.sender.id}')
                 messenger_bot.send_message(
-                    contact_id=viber_request.sender.id,
+                    contact_id=bot_request.sender.id,
                     message='_Перевищено ліміт повідомлень. Спробуйте пізніше._'
                 )
             else:
-                _handle_chat_message(viber_request.message.text, contact)
+                _handle_chat_message(bot_request.message.text, contact)
 
-        elif isinstance(viber_request, ViberUnsubscribedRequest):
-            contact = Contact.get_or_none(Contact.id == viber_request.user_id)
+        elif isinstance(bot_request, ViberUnsubscribedRequest):
+            contact = Contact.get_or_none(Contact.id == bot_request.user_id)
             if contact:
                 logger.error(f'USER LEFT THE CHAT, DELETING: {contact}')
                 contact.delete_instance()
 
-        elif isinstance(viber_request, ViberConversationStartedRequest):
-            contact = Contact.get_or_none(Contact.id == viber_request.user.id)
+        elif isinstance(bot_request, ViberConversationStartedRequest):
+            contact = Contact.get_or_none(Contact.id == bot_request.user.id)
             if contact is None:
-                username = viber_request.user.name
+                username = bot_request.user.name
                 invitation =  'Вітаю' if username == 'Subscriber' else \
-                             f'Вітаю, {viber_request.user.name}'
+                             f'Вітаю, {bot_request.user.name}'
                 messenger_bot.send_message(
-                    contact_id=viber_request.user.id,
+                    contact_id=bot_request.user.id,
                     message=f"{invitation}! 🙌\n\n"
                              "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
                              "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.",
                     keyboard=KBRD_SUBSCRIBE
                 )
                 Contact.create(
-                    id=viber_request.user.id,
-                    name=viber_request.user.name,
+                    id=bot_request.user.id,
+                    name=bot_request.user.name,
                     active=False,
                     last_access=datetime.utcnow()
                 )
-        elif isinstance(viber_request, ViberFailedRequest):
-            logger.warning("Client failed to receive message. Failure: {0}".format(viber_request))
+        elif isinstance(bot_request, ViberFailedRequest):
+            logger.warning("Client failed to receive message. Failure: {0}".format(bot_request))
+
+    except Exception as e:
+        logger.error(f'GENERAL ERROR: {e}')
+        logger.error(traceback.format_exc())
+
+    return Response(status=200)
+
+
+# @app.route('/', methods=['POST'])
+@inject
+def incoming_tg(
+        messenger_bot: MessengerBot = Provide[Container.messenger_bot]
+):
+    logger.debug("received request. post data: {0}".format(request.get_data()))
+
+    try:
+        # every viber message is signed, you can verify the signature using this method
+        # if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+        if not messenger_bot.verify_message_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+            return Response(status=403)
+
+        # viber_request = viber.parse_request(request.get_data())
+        bot_request = messenger_bot.parse_request(request.get_data())
+        # user_id = bot_request.message.from_user.id # TODO: or bot_request.message.chat.id ?
+        message_text = None
+        user_id = None
+        if bot_request.message:
+            message_text = bot_request.message.text
+            user_id = bot_request.message.from_user.id
+        else:
+            user_id = bot_request.effective_user.id  # TODO: or bot_request.message.chat.id ?
+
+        if message_text == '/start':
+            contact = Contact.get_or_none(Contact.id == user_id)
+            if contact is None:
+                username = bot_request.message.from_user.full_name
+                invitation =  'Вітаю' if username == 'Subscriber' else \
+                             f'Вітаю, {username}'
+                invitation_message = f"{invitation}! 🙌\n\n" \
+                             "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n" \
+                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
+                messenger_bot.send_message(
+                    contact_id=user_id,
+                    message=invitation_message
+                )
+                Contact.create(
+                    id=user_id,
+                    name=username,
+                    active=False,
+                    last_access=datetime.utcnow()
+                )
+
+        elif bot_request.my_chat_member and bot_request.my_chat_member.new_chat_member.status in ('left', 'kicked'):
+            contact = Contact.get_or_none(Contact.id == user_id)
+            if contact:
+                logger.error(f'USER LEFT THE CHAT, DELETING: {contact}')
+                contact.delete_instance()
+        else:
+            messenger_bot.send_message(
+                contact_id=user_id,
+                message=message_text
+            )
+
+        # if isinstance(bot_request, ViberMessageRequest):
+        #     allowed = rate_limiter.check_limits(scope=bot_request.sender.id)
+        #     contact = Contact.get_or_none(Contact.id == bot_request.sender.id)
+        #
+        #     if contact is None:
+        #         logger.error(f"Contact {bot_request.sender.id} not found in DB!")
+        #         messenger_bot.send_message(
+        #             contact_id=bot_request.sender.id,
+        #             message='Ваш контакт не знайдено. Спробуйте видалити чат та додатись до нього знову.'
+        #         )
+        #     elif not allowed:
+        #         logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {bot_request.sender.id}')
+        #         messenger_bot.send_message(
+        #             contact_id=bot_request.sender.id,
+        #             message='_Перевищено ліміт повідомлень. Спробуйте пізніше._'
+        #         )
+        #     else:
+        #         _handle_chat_message(bot_request.message.text, contact)
+        #
+        # elif isinstance(bot_request, ViberUnsubscribedRequest):
+        #     contact = Contact.get_or_none(Contact.id == bot_request.user_id)
+        #     if contact:
+        #         logger.error(f'USER LEFT THE CHAT, DELETING: {contact}')
+        #         contact.delete_instance()
+        #
+        # elif isinstance(bot_request, ViberConversationStartedRequest):
+        #     contact = Contact.get_or_none(Contact.id == bot_request.user.id)
+        #     if contact is None:
+        #         username = bot_request.user.name
+        #         invitation =  'Вітаю' if username == 'Subscriber' else \
+        #                      f'Вітаю, {bot_request.user.name}'
+        #         messenger_bot.send_message(
+        #             contact_id=bot_request.user.id,
+        #             message=f"{invitation}! 🙌\n\n"
+        #                      "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
+        #                      "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.",
+        #             keyboard=KBRD_SUBSCRIBE
+        #         )
+        #         Contact.create(
+        #             id=bot_request.user.id,
+        #             name=bot_request.user.name,
+        #             active=False,
+        #             last_access=datetime.utcnow()
+        #         )
+        # elif isinstance(bot_request, ViberFailedRequest):
+        #     logger.warning("Client failed to receive message. Failure: {0}".format(bot_request))
 
     except Exception as e:
         logger.error(f'GENERAL ERROR: {e}')

@@ -1,13 +1,17 @@
-from typing import Any
+import json
+from typing import Any, Union
 
+import telegram
+import viberbot
 from viberbot.api.messages import TextMessage
 
 from common.helpers import Singleton, ThreadSafeSingleton
+from common.logger import logger
 
 
 class MessengerBot:
 
-    def __init__(self, api_client: Any = None):
+    def __init__(self, api_client: Union[viberbot.Api, telegram.Bot] = None):
         self._api_client = api_client
         self.masked = False
         self.forced_state = None
@@ -49,5 +53,21 @@ class ViberMessengerBot(MessengerBot):
 
 
 class TelegramMessengerBot(MessengerBot):
-    pass
+    def send_message(self, contact_id, message, keyboard=None):
+        self._api_client.sendMessage(
+            chat_id=contact_id,
+            text=message
+        )
+
+    def set_webhook(self, webhook_url):
+        logger.info('Setting webhook to %s', webhook_url)
+        self._api_client.setWebhook(webhook_url)
+
+    def verify_message_signature(self, data, signature):
+        return True
+
+    def parse_request(self, data):
+        # json_data = telegram.utils.request.Request.de_json(data, self._api_client)
+        json_data = json.loads(data.decode())
+        return telegram.Update.de_json(json_data, self._api_client)
 

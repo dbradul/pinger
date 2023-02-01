@@ -27,7 +27,8 @@ if __name__ == "__main__":
     container = Container()
     container.init_resources()
     container.wire(modules=[
-        'common.handlers'
+        'common.handlers',
+        # 'web.views',
     ])
 
     pinger = container.pinger()

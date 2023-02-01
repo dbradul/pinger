@@ -1,4 +1,5 @@
 import viberbot
+import telegram
 
 import common
 import services
@@ -17,29 +18,48 @@ class Container(containers.DeclarativeContainer):
 
     # Config
     config = providers.Configuration()
-    config.VIBER_API_TOKEN.from_env("VIBER_API_TOKEN")
     config.ROUTER_IP.from_env("ROUTER_IP")
     config.ROUTER_PORT.from_env("ROUTER_PORT")
     config.ROUTER_USER.from_env("ROUTER_USER")
     config.ROUTER_PASSWORD.from_env("ROUTER_PASSWORD")
     config.ROUTER_REQUEST_TIMEOUT.from_env("ROUTER_REQUEST_TIMEOUT")
 
+    config.BOT_BACKEND.from_env("BOT_BACKEND")
+    config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
+    config.VIBER_API_TOKEN.from_env("VIBER_API_TOKEN")
+
     # Bot
-    bot_api_configuration = providers.Singleton(
+    viber_bot_api_configuration = providers.Singleton(
         viberbot.BotConfiguration,
         name='Світло 4-10',
         avatar='http://site.com/avatar.jpg',
         auth_token=config.VIBER_API_TOKEN()
     )
 
-    bot_api = providers.Singleton(
+    viber_bot_api = providers.Singleton(
         viberbot.Api,
-        bot_configuration=bot_api_configuration,
+        bot_configuration=viber_bot_api_configuration,
     )
 
-    messenger_bot = providers.Singleton(
-        services.ViberMessengerBot,
-        api_client=bot_api
+    # messenger_bot = providers.Singleton(
+    #     services.ViberMessengerBot,
+    #     api_client=bot_api
+    # )
+    tg_bot_api = providers.Singleton(
+        telegram.Bot,
+        token=config.TELEGRAM_API_TOKEN()
+    )
+
+    messenger_bot = providers.Selector(
+        config.BOT_BACKEND,
+        telegram=providers.Factory(
+            services.TelegramMessengerBot,
+            api_client=tg_bot_api
+        ),
+        viber=providers.Factory(
+            services.ViberMessengerBot,
+            api_client=viber_bot_api
+        ),
     )
 
     # Services
