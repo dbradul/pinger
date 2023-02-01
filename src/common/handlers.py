@@ -16,7 +16,7 @@ from common.models import Contact, History
 from services import MessengerBot
 from services.contact import ContactService
 from services.pinger import Pinger
-from viber.keyboards import *
+from bot.keyboards import *
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
 
@@ -140,12 +140,29 @@ def incoming_tg(
             if contact:
                 logger.error(f'USER LEFT THE CHAT, DELETING: {contact}')
                 contact.delete_instance()
+        # else:
+        #     messenger_bot.send_message(
+        #         contact_id=user_id,
+        #         message=message_text
+        #     )
         else:
-            messenger_bot.send_message(
-                contact_id=user_id,
-                message=message_text
-            )
+            allowed = rate_limiter.check_limits(scope=user_id)
+            contact = Contact.get_or_none(Contact.id == user_id)
 
+            if contact is None:
+                logger.error(f"Contact {user_id} not found in DB!")
+                messenger_bot.send_message(
+                    contact_id=user_id,
+                    message='Ваш контакт не знайдено. Спробуйте видалити чат та додатись до нього знову.'
+                )
+            elif not allowed:
+                logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {user_id}')
+                messenger_bot.send_message(
+                    contact_id=user_id,
+                    message='_Перевищено ліміт повідомлень. Спробуйте пізніше._'
+                )
+            else:
+                _handle_chat_message(bot_request.message.text, contact)
         # if isinstance(bot_request, ViberMessageRequest):
         #     allowed = rate_limiter.check_limits(scope=bot_request.sender.id)
         #     contact = Contact.get_or_none(Contact.id == bot_request.sender.id)

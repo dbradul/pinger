@@ -25,8 +25,10 @@ class Container(containers.DeclarativeContainer):
     config.ROUTER_REQUEST_TIMEOUT.from_env("ROUTER_REQUEST_TIMEOUT")
 
     config.BOT_BACKEND.from_env("BOT_BACKEND")
-    config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
     config.VIBER_API_TOKEN.from_env("VIBER_API_TOKEN")
+    config.VIBER_ADMIN_IDS.from_env("VIBER_ADMIN_IDS")
+    config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
+    config.TELEGRAM_ADMIN_IDS.from_env("TELEGRAM_ADMIN_IDS")
 
     # Bot
     viber_bot_api_configuration = providers.Singleton(
@@ -63,10 +65,23 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Services
-    contact_service = providers.Factory(
-        services.ViberContactService,
-        messenger_bot=messenger_bot
+    contact_service = providers.Selector(
+        config.BOT_BACKEND,
+        telegram=providers.Factory(
+            services.TelegramContactService,
+            messenger_bot=messenger_bot,
+            admin_ids=config.TELEGRAM_ADMIN_IDS
+        ),
+        viber=providers.Factory(
+            services.ViberContactService,
+            messenger_bot=messenger_bot,
+            admin_ids=config.VIBER_ADMIN_IDS
+        ),
     )
+    # contact_service = providers.Factory(
+    #     services.ViberContactService,
+    #     messenger_bot=messenger_bot
+    # )
 
     history_service = providers.Factory(
         services.HistoryService

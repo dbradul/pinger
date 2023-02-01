@@ -1,17 +1,15 @@
 import copy
-import os
 import traceback
 from datetime import datetime
 
-from dependency_injector.wiring import inject, Provide, Container
 from peewee import fn
+from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 from common.logger import logger
 from common.models import Contact
 from services import MessengerBot
-from viber.keyboards import *
-
-ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
+from bot.keyboards import *
+from bot.texts import *
 
 
 
@@ -44,8 +42,9 @@ ADMIN_IDS = os.getenv('ADMIN_IDS').split(',')
 
 class ContactService:
 
-    def __init__(self, messenger_bot: MessengerBot):
+    def __init__(self, messenger_bot: MessengerBot, admin_ids=None):
         self._messenger_bot = messenger_bot
+        self._admin_ids = admin_ids or []
 
     def get_keyboard(self, contact: Contact):
         raise NotImplementedError('get_keyboard method must be implemented')
@@ -109,7 +108,7 @@ class ViberContactService(ContactService):
         else:
             keyboard = KBRD_SUBSCRIBE
 
-        if contact and contact.id in ADMIN_IDS:
+        if contact and contact.id in self._admin_ids:
             admin_keyboard = self.get_admin_keyboard(contact)
             keyboard = copy.deepcopy(keyboard)
             keyboard['Buttons'].extend(admin_keyboard)
@@ -144,7 +143,15 @@ class ViberContactService(ContactService):
 class TelegramContactService(ContactService):
 
     def get_keyboard(self, contact):
-        ...
+        if contact and contact.active:
+            button_subscribe_text = MSG_SUBSCRIBE_TEXT
+        else:
+            button_subscribe_text = MSG_UNSUBSCRIBE_TEXT
+        keyboard = ReplyKeyboardMarkup([
+            [KeyboardButton(button_subscribe_text)],
+            [KeyboardButton(MSG_QUESTION_TEXT)]
+        ])
+        return keyboard
 
     def get_admin_keyboard(self, contact):
         ...

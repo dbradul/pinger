@@ -1,14 +1,4 @@
-MSG_QUESTION_TEXT = 'Світло є?'
-MSG_SUBSCRIBE_TEXT = 'Підписатись'
-MSG_UNSUBSCRIBE_TEXT = 'Відписатись'
-MSG_ADMIN_STATS_TEXT = '__!!~~##s_t_a_t_s_4_2'
-MSG_ADMIN_MASK_TEXT = '__!!~~##m_a_s_k'
-MSG_ADMIN_UNMASK_TEXT = '__!!~~##u_n_m_a_s_k'
-MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_n_l_i_n_e__e_n_a_b_l_e'
-MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_f_f_l_i_n_e__e_n_a_b_l_e'
-MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_n_l_i_n_e__d_i_s_a_b_l_e'
-MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_f_f_l_i_n_e__d_i_s_a_b_l_e'
-MSG_ADMIN_FORCED_RESEND_TEXT = '__!!~~##f_o_r_c_e_d__r_e_s_e_n_d'
+from . texts import *
 
 KBRD_BTN_SUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_SUBSCRIBE_TEXT}</font>"
 KBRD_BTN_UNSUBSCRIBE_LABEL = f"<font bold size=24 color=\"#000000\">{MSG_UNSUBSCRIBE_TEXT}</font>"

@@ -56,7 +56,8 @@ class TelegramMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
         self._api_client.sendMessage(
             chat_id=contact_id,
-            text=message
+            text=message,
+            reply_markup=keyboard
         )
 
     def set_webhook(self, webhook_url):
