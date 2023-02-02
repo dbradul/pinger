@@ -1,20 +1,20 @@
 import viberbot
 import telegram
 
+import bot.resources
 import common
 import services
 
 from dependency_injector import containers, providers
 
 class Container(containers.DeclarativeContainer):
-    #
     # config = providers.Configuration(ini_files=["config.ini"])
     #
     # logging = providers.Resource(
     #     logging.config.fileConfig,
     #     fname="logging.ini",
     # )
-    #
+
 
     # Config
     config = providers.Configuration()
@@ -43,45 +43,41 @@ class Container(containers.DeclarativeContainer):
         bot_configuration=viber_bot_api_configuration,
     )
 
-    # messenger_bot = providers.Singleton(
-    #     services.ViberMessengerBot,
-    #     api_client=bot_api
-    # )
     tg_bot_api = providers.Singleton(
         telegram.Bot,
         token=config.TELEGRAM_API_TOKEN()
     )
 
+    viber_resource = providers.Factory(
+        bot.resources.ViberResource
+    )
+
+    tg_resource = providers.Factory(
+        bot.resources.TelegramResource
+    )
+
+
+    # Services
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
-        telegram=providers.Factory(
-            services.TelegramMessengerBot,
-            api_client=tg_bot_api
-        ),
-        viber=providers.Factory(
+        viber=providers.Singleton(
             services.ViberMessengerBot,
-            api_client=viber_bot_api
+            api_client=viber_bot_api,
+            resource=viber_resource,
+            admin_ids=config.VIBER_ADMIN_IDS
+        ),
+        telegram=providers.Singleton(
+            services.TelegramMessengerBot,
+            api_client=tg_bot_api,
+            resource=tg_resource,
+            admin_ids=config.TELEGRAM_ADMIN_IDS
         ),
     )
 
-    # Services
-    contact_service = providers.Selector(
-        config.BOT_BACKEND,
-        telegram=providers.Factory(
-            services.TelegramContactService,
-            messenger_bot=messenger_bot,
-            admin_ids=config.TELEGRAM_ADMIN_IDS
-        ),
-        viber=providers.Factory(
-            services.ViberContactService,
-            messenger_bot=messenger_bot,
-            admin_ids=config.VIBER_ADMIN_IDS
-        ),
+    contact_service = providers.Factory(
+        services.ContactService,
+        messenger_bot=messenger_bot,
     )
-    # contact_service = providers.Factory(
-    #     services.ViberContactService,
-    #     messenger_bot=messenger_bot
-    # )
 
     history_service = providers.Factory(
         services.HistoryService
@@ -106,6 +102,7 @@ class Container(containers.DeclarativeContainer):
     pinger_listener = providers.Factory(
         services.PingerListener,
         contact_service=contact_service,
-        history_service=history_service
+        history_service=history_service,
+        messenger_bot=messenger_bot
     )
 

@@ -2,6 +2,14 @@ import threading
 from typing import Dict, Any
 
 import ratelimit
+from enum import Enum
+
+
+class TextStyle(Enum):
+    BOLD = 1
+    ITALIC = 2
+    UNDERLINE = 3
+    STRIKETHROUGH = 3
 
 
 class ScopeRateLimiter:
