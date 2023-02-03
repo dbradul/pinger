@@ -9,7 +9,7 @@ class TextStyle(Enum):
     BOLD = 1
     ITALIC = 2
     UNDERLINE = 3
-    STRIKETHROUGH = 3
+    CODE = 4
 
 
 class ScopeRateLimiter:

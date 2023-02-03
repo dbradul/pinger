@@ -50,7 +50,7 @@ def incoming(
                 logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {bot_request.sender.id}')
                 messenger_bot.send_message(
                     contact_id=bot_request.sender.id,
-                    message='_Перевищено ліміт повідомлень. Спробуйте пізніше._'
+                    message='_Перевищено ліміт запитів. Спробуйте пізніше._'
                 )
             else:
                 _handle_chat_message(bot_request.message.text, contact)
@@ -63,6 +63,7 @@ def incoming(
 
         elif isinstance(bot_request, ViberConversationStartedRequest):
             contact = Contact.get_or_none(Contact.id == bot_request.user.id)
+            keyboard = messenger_bot.get_keyboard(contact)
             if contact is None:
                 username = bot_request.user.name
                 invitation =  'Вітаю' if username == 'Subscriber' else \
@@ -72,7 +73,7 @@ def incoming(
                     message=f"{invitation}! 🙌\n\n"
                              "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
                              "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.",
-                    keyboard=KBRD_SUBSCRIBE
+                    keyboard=keyboard
                 )
                 Contact.create(
                     id=bot_request.user.id,
@@ -116,6 +117,7 @@ def incoming_tg(
 
         if message_text == '/start':
             contact = Contact.get_or_none(Contact.id == user_id)
+            keyboard = messenger_bot.get_keyboard(contact)
             if contact is None:
                 username = bot_request.message.from_user.full_name
                 invitation =  'Вітаю' if username == 'Subscriber' else \
@@ -125,7 +127,8 @@ def incoming_tg(
                              "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
                 messenger_bot.send_message(
                     contact_id=user_id,
-                    message=invitation_message
+                    message=invitation_message,
+                    keyboard=keyboard
                 )
                 Contact.create(
                     id=user_id,
@@ -159,7 +162,7 @@ def incoming_tg(
                 messenger_bot.send_message(
                     contact_id=user_id,
                     message=messenger_bot.render_text(
-                        text='Перевищено ліміт повідомлень. Спробуйте пізніше.',
+                        text='Перевищено ліміт запитів. Спробуйте пізніше.',
                         style=TextStyle.ITALIC
                     )
                 )

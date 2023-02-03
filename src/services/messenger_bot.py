@@ -39,10 +39,18 @@ class MessengerBot:
     def verify_message_signature(self, signature, data):
         raise NotImplementedError('verify_message_signature method must be implemented')
 
-    def render_text(self, text: str, style: TextStyle) -> str:
-        raise NotImplementedError('render_text method must be implemented')
+    @staticmethod
+    def render_text(text: str, style: TextStyle) -> str:
+        if style == TextStyle.BOLD:
+            return f'*{text}*'
+        elif style == TextStyle.ITALIC:
+            return f'_{text}_'
+        elif style == TextStyle.CODE:
+            return f'`{text}`'
+        else:
+            return text
 
-    def get_keyboard(self, contact: Contact):
+    def get_keyboard(self, contact: Union[None, Contact]):
         # is_admin = contact and contact.id in self._admin_ids
         # is_subscribed = contact and contact.active
         # is_masked = self._messenger_bot.masked
@@ -64,16 +72,6 @@ class ViberMessengerBot(MessengerBot):
             )
         ])
 
-    def render_text(self, text: str, style: TextStyle) -> str:
-        if style == TextStyle.BOLD:
-            return f'*{text}*'
-        elif style == TextStyle.ITALIC:
-            return f'_{text}_'
-        elif style == TextStyle.STRIKETHROUGH:
-            return f'~{text}~'
-        else:
-            return text
-
     def set_webhook(self, webhook_url):
         self._api_client.set_webhook(webhook_url)
 
@@ -89,20 +87,9 @@ class TelegramMessengerBot(MessengerBot):
         self._api_client.sendMessage(
             chat_id=contact_id,
             text=message,
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode='markdown'
         )
-
-    def render_text(self, text: str, style: TextStyle) -> str:
-        if style == TextStyle.BOLD:
-            return f'<b>{text}</b>'
-        elif style == TextStyle.ITALIC:
-            return f'<i>{text}</i>'
-        elif style == TextStyle.UNDERLINE:
-            return f'<u>{text}</u>'
-        elif style == TextStyle.STRIKETHROUGH:
-            return f'<s>{text}</s>'
-        else:
-            return text
 
     def set_webhook(self, webhook_url):
         logger.info('Setting webhook to %s', webhook_url)

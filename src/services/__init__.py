@@ -4,9 +4,7 @@ from . messenger_bot import (
     TelegramMessengerBot
 )
 from . contact import (
-    ContactService,
-    ViberContactService,
-    TelegramContactService
+    ContactService
 )
 from . history import HistoryService
 from . listeners import PingerListener

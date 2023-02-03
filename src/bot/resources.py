@@ -207,8 +207,8 @@ class TelegramResource(Resource):
     MSG_SUBSCRIBE_TEXT = '🔔 Підписатись'
     MSG_UNSUBSCRIBE_TEXT = '🔕 Відписатись'
     MSG_ADMIN_STATS_TEXT = 'Stats...'
-    MSG_ADMIN_MASK_TEXT = '🔕Disable notif.'
-    MSG_ADMIN_UNMASK_TEXT = '🔔Enable notif.'
+    MSG_ADMIN_MASK_TEXT = '🔕 Disable notif.'
+    MSG_ADMIN_UNMASK_TEXT = '🔔 Enable notif.'
     MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT = 'Force ONLINE'
     MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT = 'Force OFFLINE'
     MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = '❌UNForce ONLINE'
@@ -228,7 +228,7 @@ class TelegramResource(Resource):
                     KeyboardButton(self.MSG_QUESTION_TEXT)
                 ]
             ],
-            # resize_keyboard=True,
+            resize_keyboard=True,
             # one_time_keyboard=False,
             # is_persistent=True
         )
