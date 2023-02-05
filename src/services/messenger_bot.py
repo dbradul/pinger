@@ -39,8 +39,8 @@ class MessengerBot:
     def verify_message_signature(self, request_data, request_headers):
         raise NotImplementedError('verify_message_signature method must be implemented')
 
-    @staticmethod
-    def render_text(text: str, style: TextStyle) -> str:
+    @classmethod
+    def render_text(cls, text: str, style: TextStyle) -> str:
         if style == TextStyle.BOLD:
             return f'*{text}*'
         elif style == TextStyle.ITALIC:
@@ -81,6 +81,13 @@ class ViberMessengerBot(MessengerBot):
     def parse_request(self, data):
         return self._api_client.parse_request(data)
 
+    @classmethod
+    def render_text(cls, text: str, style: TextStyle) -> str:
+        if style == TextStyle.CODE:
+            return f'```{text}```'
+        else:
+            return super(cls, cls).render_text(text, style)
+
 
 class TelegramMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
@@ -99,6 +106,5 @@ class TelegramMessengerBot(MessengerBot):
         return True
 
     def parse_request(self, data):
-        # json_data = telegram.utils.request.Request.de_json(data, self._api_client)
         json_data = json.loads(data.decode())
         return telegram.Update.de_json(json_data, self._api_client)

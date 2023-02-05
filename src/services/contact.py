@@ -30,7 +30,7 @@ class ContactService:
 
     def get_recently_active_users(self, limit: int = 10):
         return Contact \
-            .filter(Contact.active == True) \
+            .filter() \
             .order_by(Contact.last_access.desc()) \
             .limit(limit) \
             .objects()
@@ -44,3 +44,6 @@ class ContactService:
         if random_sort:
             contacts = contacts.order_by(fn.Random())
         return contacts.objects()
+
+    def get_all(self):
+        return Contact.filter().objects()

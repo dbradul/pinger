@@ -228,7 +228,10 @@ def _handle_chat_message(
         for contact in contacts:
             messenger_bot.send_message(
                 contact_id=contact_id,
-                message=f'```{contact.formatted_info()}```',
+                message=messenger_bot.render_text(
+                    text=contact.formatted_info(),
+                    style=TextStyle.CODE
+                ),
                 keyboard=keyboard
             )
 
@@ -271,6 +274,33 @@ def _handle_chat_message(
             message=f'Forced state: {forced_state_str}',
             keyboard=keyboard
         )
+
+    elif message in (
+            messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT
+    ):
+        adv_message = '''Вітаю, {}!
+
+Через обмеження Вайбер у найближчі дні можут початися проблеми з отриманнім повідомлень про вмикання/вимикання світла.
+
+Ці обмеження стосуються лише повідомлень від самого бота, а не відповідей користувачу. Тобто кнопка “Світло є?” продовжить працювати як звичайно.
+
+Нажаль, єдиний спосіб обійти обмеження на повідомлення - це змінити месенджер.
+
+Тому, якщо ви зацікавлені у стабільному отриманні повідомлень про світло від бота, є можливість підключитись до бота в Телеграмі.
+
+Бот в Вайбері продовжить працювати як звичайно.
+
+Посилання: https://t.me/gem04_bot
+        '''
+        logger.info(f"Sending adv. message...")
+        all_contacts = contact_service.get_all()
+        for contact in all_contacts:
+            keyboard = messenger_bot.get_keyboard(contact)
+            messenger_bot.send_message(
+                contact_id=contact.id,
+                message=adv_message.format(contact.name),
+                keyboard=keyboard
+            )
     else:
         messenger_bot.send_message(
             contact_id=contact_id,

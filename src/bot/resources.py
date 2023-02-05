@@ -13,6 +13,7 @@ class Resource:
     MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_n_l_i_n_e__d_i_s_a_b_l_e'
     MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT = '__!!~~##f_o_r_c_e_d__o_f_f_l_i_n_e__d_i_s_a_b_l_e'
     MSG_ADMIN_FORCED_RESEND_TEXT = '__!!~~##f_o_r_c_e_d__r_e_s_e_n_d'
+    MSG_ADMIN_ADV_MESSAGE_TEXT = '__!!~~##a_d_v__m_e_s_s_a_g_e'
     MSG_SUBSCRIBE_TEXT = 'Підписатись'
     MSG_UNSUBSCRIBE_TEXT = 'Відписатись'
 
@@ -39,6 +40,7 @@ class ViberResource(Resource):
     MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = Resource.MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT
     MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT = Resource.MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT
     MSG_ADMIN_FORCED_RESEND_TEXT = Resource.MSG_ADMIN_FORCED_RESEND_TEXT
+    MSG_ADMIN_ADV_MESSAGE_TEXT = Resource.MSG_ADMIN_ADV_MESSAGE_TEXT
     MSG_SUBSCRIBE_TEXT = Resource.MSG_SUBSCRIBE_TEXT
     MSG_UNSUBSCRIBE_TEXT = Resource.MSG_UNSUBSCRIBE_TEXT
 
@@ -53,6 +55,7 @@ class ViberResource(Resource):
     KBRD_BTN_FORCED_STATE_ONLINE_LABEL_DISABLE = f"<font bold size=24 color=\"#000000\">❌UNForce ONLINE</font>"
     KBRD_BTN_FORCED_STATE_OFFLINE_LABEL_DISABLE = f"<font bold size=24 color=\"#000000\">❌UNForce OFFLINE</font>"
     KBRD_BTN_RESEND_LABEL = f"<font bold size=24 color=\"#000000\">RESEND</font>"
+    KBRD_BTN_ADV_MESSAGE_LABEL = f"<font bold size=24 color=\"#000000\">SEND Adv.</font>"
 
     KBRD_BTN_MASK_UNMASK = {
         "Columns": 3,
@@ -105,6 +108,16 @@ class ViberResource(Resource):
             "TextVAlign": "center",
             "ActionType": "reply",
             "ActionBody": f'{MSG_ADMIN_FORCED_RESEND_TEXT}',
+        },
+        {
+            "Columns": 6,
+            "Rows": 1,
+            "Text": f'{KBRD_BTN_ADV_MESSAGE_LABEL}',
+            "TextSize": "large",
+            "TextHAlign": "center",
+            "TextVAlign": "center",
+            "ActionType": "reply",
+            "ActionBody": f'{MSG_ADMIN_ADV_MESSAGE_TEXT}',
         },
     ]
 
@@ -172,7 +185,7 @@ class ViberResource(Resource):
             keyboard = self.KBRD_UNSUBSCRIBE
         else:
             keyboard = self.KBRD_SUBSCRIBE
-        return keyboard
+        return copy.deepcopy(keyboard)
 
     def _add_admin_keyboard(self, keyboard, is_masked, is_forced_state):
         admin_keyboard = copy.deepcopy(self.KBRD_BTN_ADMIN)
@@ -214,6 +227,7 @@ class TelegramResource(Resource):
     MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = '❌UNForce ONLINE'
     MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT = '❌UNForce OFFLINE'
     MSG_ADMIN_FORCED_RESEND_TEXT = 'RESEND'
+    MSG_ADMIN_ADV_MESSAGE_TEXT = 'SEND ADV'
 
     def _get_common_keyboard(self, is_subscribed):
         if is_subscribed:
@@ -244,9 +258,12 @@ class TelegramResource(Resource):
                 KeyboardButton(self.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT),
                 KeyboardButton(self.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT)
             ],
-            [
-                KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
-            ]
+            # [
+            #     KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
+            # ],
+            # [
+            #     KeyboardButton(self.MSG_ADMIN_ADV_MESSAGE_TEXT)
+            # ],
         ]
         if is_masked:
             admin_keyboard[0][0] = KeyboardButton(self.MSG_ADMIN_UNMASK_TEXT)
