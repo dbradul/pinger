@@ -30,5 +30,4 @@ class PingerListener:
                 logger.error(f"ERROR SENDING NOTIFICATION TO {subscriber.id}: {e}")
                 logger.error(traceback.format_exc())
 
-
         self._history_service.dump_event(new_state)

@@ -229,8 +229,8 @@ class TelegramResource(Resource):
                 ]
             ],
             resize_keyboard=True,
-            # one_time_keyboard=False,
-            # is_persistent=True
+            one_time_keyboard=False,
+            is_persistent=True
         )
         return keyboard
 

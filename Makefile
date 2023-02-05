@@ -33,7 +33,7 @@ ps:
 	docker compose ps
 
 logs:
-	docker compose logs -f
+	docker compose logs -f --tail 100
 
 create-migration:
 	cd src && pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..

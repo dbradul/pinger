@@ -30,7 +30,7 @@ def incoming(
     try:
         # every viber message is signed, you can verify the signature using this method
         # if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
-        if not messenger_bot.verify_message_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+        if not messenger_bot.verify_message_signature(request.get_data(), request.headers):
             return Response(status=403)
 
         # viber_request = viber.parse_request(request.get_data())
@@ -101,7 +101,7 @@ def incoming_tg(
     try:
         # every viber message is signed, you can verify the signature using this method
         # if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
-        if not messenger_bot.verify_message_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+        if not messenger_bot.verify_message_signature(request.get_data(), request.headers):
             return Response(status=403)
 
         # viber_request = viber.parse_request(request.get_data())
@@ -115,7 +115,7 @@ def incoming_tg(
         else:
             user_id = bot_request.effective_user.id  # TODO: or bot_request.message.chat.id ?
 
-        if message_text == '/start':
+        if message_text and message_text == '/start':
             contact = Contact.get_or_none(Contact.id == user_id)
             keyboard = messenger_bot.get_keyboard(contact)
             if contact is None:
@@ -136,6 +136,12 @@ def incoming_tg(
                     active=False,
                     last_access=datetime.utcnow()
                 )
+            else:
+                messenger_bot.send_message(
+                    contact_id=user_id,
+                    message=f'Вітаю, {contact.name}! 🙌',
+                    keyboard=keyboard
+                )
 
         elif bot_request.my_chat_member and bot_request.my_chat_member.new_chat_member.status in ('left', 'kicked'):
             contact = Contact.get_or_none(Contact.id == user_id)
@@ -147,7 +153,10 @@ def incoming_tg(
         #         contact_id=user_id,
         #         message=message_text
         #     )
-        else:
+
+        # elif bot_request.my_chat_member and bot_request.my_chat_member.new_chat_member.status in ('member'):
+        #     pass
+        elif message_text and message_text != '/start':
             allowed = rate_limiter.check_limits(scope=user_id)
             contact = Contact.get_or_none(Contact.id == user_id)
 
@@ -262,6 +271,16 @@ def _handle_chat_message(
             message=f'Forced state: {forced_state_str}',
             keyboard=keyboard
         )
+    else:
+        messenger_bot.send_message(
+            contact_id=contact_id,
+            message=messenger_bot.render_text(
+                text='Невідома команда',
+                style=TextStyle.ITALIC
+            ),
+            keyboard=keyboard
+        )
+
 
 
 # @app.route('/register', methods=['GET'])

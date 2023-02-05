@@ -36,7 +36,7 @@ class MessengerBot:
     def unset_webhook(self):
         raise NotImplementedError('unset_webhook method must be implemented')
 
-    def verify_message_signature(self, signature, data):
+    def verify_message_signature(self, request_data, request_headers):
         raise NotImplementedError('verify_message_signature method must be implemented')
 
     @staticmethod
@@ -75,8 +75,8 @@ class ViberMessengerBot(MessengerBot):
     def set_webhook(self, webhook_url):
         self._api_client.set_webhook(webhook_url)
 
-    def verify_message_signature(self, data, signature):
-        return self._api_client.verify_signature(data, signature)
+    def verify_message_signature(self, request_data, request_headers):
+        return self._api_client.verify_signature(request_data, request_headers.get('X-Viber-Content-Signature'))
 
     def parse_request(self, data):
         return self._api_client.parse_request(data)
@@ -95,7 +95,7 @@ class TelegramMessengerBot(MessengerBot):
         logger.info('Setting webhook to %s', webhook_url)
         self._api_client.setWebhook(webhook_url)
 
-    def verify_message_signature(self, data, signature):
+    def verify_message_signature(self, request_data, request_headers):
         return True
 
     def parse_request(self, data):

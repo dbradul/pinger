@@ -1,6 +1,6 @@
 import os
 
-from common.handlers import incoming, incoming_tg, register, init_db
+from web.handlers import incoming, incoming_tg, register, init_db
 # from web.views import BaseView
 
 ROUTES = {
