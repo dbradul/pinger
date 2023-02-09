@@ -4,7 +4,6 @@ import re
 import traceback
 from datetime import datetime
 
-import random
 from dependency_injector.wiring import Provide, inject
 from flask import request, Response
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
@@ -41,6 +40,7 @@ def incoming(
         if isinstance(bot_request, ViberMessageRequest):
             allowed = rate_limiter.check_limits(scope=bot_request.sender.id)
             contact = Contact.get_or_none(Contact.id == bot_request.sender.id)
+            keyboard = messenger_bot.get_keyboard(contact)
 
             if contact is None:
                 logger.error(f"Contact {bot_request.sender.id} not found in DB!")
@@ -52,7 +52,8 @@ def incoming(
                 logger.error(f'RATE LIMIT IS EXCEEDED FOR USER: {bot_request.sender.id}')
                 messenger_bot.send_message(
                     contact_id=bot_request.sender.id,
-                    message='_Перевищено ліміт запитів. Спробуйте пізніше._'
+                    message='_Перевищено ліміт запитів. Спробуйте пізніше._',
+                    keyboard=keyboard,
                 )
             else:
                 _handle_chat_message(bot_request.message.text, contact)
@@ -136,6 +137,7 @@ def incoming_tg(
         if (message_text and message_text == '/start'):
             contact = Contact.get_or_none(Contact.id == user_id)
             keyboard = messenger_bot.get_keyboard(contact)
+
             if contact is None:
                 # username = bot_request.message.from_user.full_name
                 username = bot_request.effective_user.full_name
@@ -178,6 +180,7 @@ def incoming_tg(
         elif message_text and message_text != '/start':
             allowed = rate_limiter.check_limits(scope=user_id)
             contact = Contact.get_or_none(Contact.id == user_id)
+            keyboard = messenger_bot.get_keyboard(contact)
 
             if contact is None:
                 logger.error(f"Contact {user_id} not found in DB!")
@@ -192,7 +195,8 @@ def incoming_tg(
                     message=messenger_bot.render_text(
                         text='Перевищено ліміт запитів. Спробуйте пізніше.',
                         style=TextStyle.ITALIC
-                    )
+                    ),
+                    keyboard=keyboard
                 )
             else:
                 _handle_chat_message(bot_request.message.text, contact)
