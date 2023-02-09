@@ -314,7 +314,9 @@ def _handle_chat_message(
         )
 
     elif message == messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-        adv_message = '''Вітаю, {}!
+        invitation = ('Вітаю' if contact.name == 'Subscriber'
+                      else f'Вітаю, {contact.name}')
+        adv_message = f'''{invitation}!
 
 Через обмеження Вайбер у найближчі дні можут перестати приходити повідомлення про вмикання/вимикання світла.
 
@@ -336,7 +338,7 @@ def _handle_chat_message(
             try:
                 messenger_bot.send_message(
                     contact_id=contact.id,
-                    message=adv_message.format(contact.name),
+                    message=adv_message,
                     keyboard=keyboard
                 )
             except Exception as e:
