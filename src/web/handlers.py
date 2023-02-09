@@ -333,9 +333,11 @@ def _handle_chat_message(
         logger.info(f"Sending adv. message...")
         # all_contacts = contact_service.get_all()
         engaged_contacts = contact_service.get_engaged_contacts()
+        logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
         for contact in engaged_contacts:
             keyboard = messenger_bot.get_keyboard(contact)
             try:
+                logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
                 messenger_bot.send_message(
                     contact_id=contact.id,
                     message=adv_message,
