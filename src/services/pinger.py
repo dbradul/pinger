@@ -62,9 +62,9 @@ class Pinger(Thread):
                         probe_count = 0
                         self.is_online = result
                         if not self.masked:
-                            logger.info('STATE HAS CHANGED! NOTIFYING LISTENERS!')
+                            current_state_info = self.get_current_state_info(bot=True)
+                            logger.info(f'STATE HAS CHANGED: {current_state_info}! NOTIFYING LISTENERS!')
                             for listener in self._listeners:
-                                current_state_info = self.get_current_state_info(bot=True)
                                 listener.on_state_change(current_state_info)
                         else:
                             logger.info('STATE HAS CHANGED! NOTIFICATIONS ARE DISABLED!')

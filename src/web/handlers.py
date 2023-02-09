@@ -1,8 +1,10 @@
 import datetime
+import os
 import re
 import traceback
 from datetime import datetime
 
+import random
 from dependency_injector.wiring import Provide, inject
 from flask import request, Response
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
@@ -18,7 +20,7 @@ from services.contact import ContactService
 from services.pinger import Pinger
 
 rate_limiter = ScopeRateLimiter(calls=5, period=10)
-
+OUTLIERS_FILEPATH = os.getenv('OUTLIERS_FILEPATH')
 
 # @app.route('/', methods=['POST'])
 @inject
@@ -72,7 +74,24 @@ def incoming(
                     contact_id=bot_request.user.id,
                     message=f"{invitation}! 🙌\n\n"
                              "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
-                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'.",
+                             "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
+"""
+
+
+️👇 ВАЖЛИВО! 👇
+
+Через обмеження Вайбер з часом можут перестати приходити повідомлення про вмикання/вимикання світла.
+
+Ці обмеження стосуються повідомлень від самого бота, але не відповідей користувачеві. Тобто кнопка “Світло є?” буде працювати як зазвичай.
+
+Єдиний спосіб обійти ці обмеження - це змінити месенджер.
+
+Тому, якщо ви зацікавлені стабільно отримувати повідомлення про світло, можна підключитись до бота в Телеграм.
+
+Бот в Вайбері продовжить працювати як звичайно.
+
+Посилання: https://t.me/gem04_bot"""
+                    ,
                     keyboard=keyboard
                 )
                 Contact.create(
@@ -104,22 +123,22 @@ def incoming_tg(
         if not messenger_bot.verify_message_signature(request.get_data(), request.headers):
             return Response(status=403)
 
-        # viber_request = viber.parse_request(request.get_data())
         bot_request = messenger_bot.parse_request(request.get_data())
-        # user_id = bot_request.message.from_user.id # TODO: or bot_request.message.chat.id ?
-        message_text = None
-        user_id = None
-        if bot_request.message:
-            message_text = bot_request.message.text
-            user_id = bot_request.message.from_user.id
-        else:
-            user_id = bot_request.effective_user.id  # TODO: or bot_request.message.chat.id ?
+        message_text = bot_request.message and bot_request.message.text
+        user_id = bot_request.effective_user.id
 
-        if message_text and message_text == '/start':
+        # if ( message_text
+        #         and message_text == '/start'
+        # ) or ( bot_request.my_chat_member
+        #         and bot_request.my_chat_member.new_chat_member.status in ('member')
+        #         and bot_request.my_chat_member.old_chat_member.status in ('left', 'kicked')
+        # ):
+        if (message_text and message_text == '/start'):
             contact = Contact.get_or_none(Contact.id == user_id)
             keyboard = messenger_bot.get_keyboard(contact)
             if contact is None:
-                username = bot_request.message.from_user.full_name
+                # username = bot_request.message.from_user.full_name
+                username = bot_request.effective_user.full_name
                 invitation =  'Вітаю' if username == 'Subscriber' else \
                              f'Вітаю, {username}'
                 invitation_message = f"{invitation}! 🙌\n\n" \
@@ -178,6 +197,25 @@ def incoming_tg(
             else:
                 _handle_chat_message(bot_request.message.text, contact)
 
+        elif bot_request.message and (
+                bot_request.message.animation is not None or
+                bot_request.message.audio is not None or
+                bot_request.message.document is not None or
+                bot_request.message.photo is not None or
+                bot_request.message.sticker is not None or
+                bot_request.message.video is not None or
+                bot_request.message.video_note is not None or
+                bot_request.message.voice is not None
+        ):
+            logger.error(f'UNSUPPORTED MESSAGE TYPE from {user_id}')
+            messenger_bot.send_message(
+                contact_id=user_id,
+                message=messenger_bot.render_text(
+                    text='Невідома команда',
+                    style=TextStyle.ITALIC
+                )
+            )
+
     except Exception as e:
         logger.error(f'GENERAL ERROR: {e}')
         logger.error(traceback.format_exc())
@@ -224,7 +262,7 @@ def _handle_chat_message(
         )
 
     elif message == messenger_bot.resource.MSG_ADMIN_STATS_TEXT:
-        contacts = contact_service.get_recently_active_users()
+        contacts = contact_service.get_recently_active_contacts()
         for contact in contacts:
             messenger_bot.send_message(
                 contact_id=contact_id,
@@ -275,32 +313,65 @@ def _handle_chat_message(
             keyboard=keyboard
         )
 
-    elif message in (
-            messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT
-    ):
+    elif message == messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
         adv_message = '''Вітаю, {}!
 
-Через обмеження Вайбер у найближчі дні можут початися проблеми з отриманнім повідомлень про вмикання/вимикання світла.
+Через обмеження Вайбер у найближчі дні можут перестати приходити повідомлення про вмикання/вимикання світла.
 
-Ці обмеження стосуються лише повідомлень від самого бота, а не відповідей користувачу. Тобто кнопка “Світло є?” продовжить працювати як звичайно.
+Ці обмеження стосуються повідомлень від самого бота, але не відповідей користувачеві. Тобто кнопка “Світло є?” буде працювати як зазвичай.
 
-Нажаль, єдиний спосіб обійти обмеження на повідомлення - це змінити месенджер.
+Єдиний спосіб обійти ці обмеження - це змінити месенджер.
 
-Тому, якщо ви зацікавлені у стабільному отриманні повідомлень про світло від бота, є можливість підключитись до бота в Телеграмі.
+Тому, якщо ви зацікавлені стабільно отримувати повідомлення про світло, можна підключитись до бота в Телеграм.
 
 Бот в Вайбері продовжить працювати як звичайно.
 
 Посилання: https://t.me/gem04_bot
         '''
         logger.info(f"Sending adv. message...")
-        all_contacts = contact_service.get_all()
-        for contact in all_contacts:
+        # all_contacts = contact_service.get_all()
+        engaged_contacts = contact_service.get_engaged_contacts()
+        for contact in engaged_contacts:
             keyboard = messenger_bot.get_keyboard(contact)
-            messenger_bot.send_message(
-                contact_id=contact.id,
-                message=adv_message.format(contact.name),
-                keyboard=keyboard
-            )
+            try:
+                messenger_bot.send_message(
+                    contact_id=contact.id,
+                    message=adv_message.format(contact.name),
+                    keyboard=keyboard
+                )
+            except Exception as e:
+                logger.error(f"Error sending ADV. message to {contact.id}: {e}")
+                # logger.error(traceback.format_exc())
+
+    elif message == messenger_bot.resource.MSG_ADMIN_FORCED_RESEND_TEXT:
+        current_state = pinger.get_current_state_info(bot=True)
+        failed_outliers = []
+        with open(OUTLIERS_FILEPATH, 'r') as f:
+            outliers = f.read().splitlines()
+            for outlier in outliers:
+                contact_id = outlier.strip()
+                contact = Contact.get_or_none(Contact.id == contact_id)
+                keyboard = messenger_bot.get_keyboard(contact)
+                logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
+                try:
+                    messenger_bot.send_message(
+                        contact_id=contact.id,
+                        message=current_state,
+                        keyboard=keyboard
+                    )
+                except Exception as e:
+                    logger.error(f'RESEND FAILED WITH ERROR: {e}')
+                    failed_outliers.append(contact_id)
+                    logger.error(traceback.format_exc())
+
+        if failed_outliers:
+            logger.error(f"DUMPING FAILED OUTLIERS: {len(failed_outliers)} contacts")
+        else:
+            logger.error(f"RESEND IS SUCCESSFUL! NO FAILED OUTLIERS!")
+
+        with open(OUTLIERS_FILEPATH, 'w') as f:
+            f.write('\n'.join(failed_outliers))
+
     else:
         messenger_bot.send_message(
             contact_id=contact_id,

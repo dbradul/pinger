@@ -4,6 +4,7 @@ from typing import Any, Union
 import telegram
 import viberbot
 from viberbot.api.messages import TextMessage
+from viberbot.api.viber_requests import ViberConversationStartedRequest
 
 from bot.resources import Resource
 from common.helpers import TextStyle
@@ -26,6 +27,9 @@ class MessengerBot:
 
     def send_message(self, contact_id, message, keyboard=None):
         raise NotImplementedError('send_message method must be implemented')
+
+    def parse_request(self, data):
+        raise NotImplementedError('parse_request method must be implemented')
 
     def parse_request(self, data):
         raise NotImplementedError('parse_request method must be implemented')
@@ -62,6 +66,9 @@ class MessengerBot:
             is_forced_state=self.forced_state
         )
 
+    def is_start_message(self, data: Any) -> bool:
+        raise NotImplementedError('is_start_message method must be implemented')
+
 
 class ViberMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
@@ -88,6 +95,9 @@ class ViberMessengerBot(MessengerBot):
         else:
             return super(cls, cls).render_text(text, style)
 
+    def is_start_message(self, bot_request: Any) -> bool:
+        return isinstance(bot_request, ViberConversationStartedRequest)
+
 
 class TelegramMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
@@ -108,3 +118,7 @@ class TelegramMessengerBot(MessengerBot):
     def parse_request(self, data):
         json_data = json.loads(data.decode())
         return telegram.Update.de_json(json_data, self._api_client)
+
+    def is_start_message(self, bot_request: Any) -> bool:
+        message_text = bot_request.message and bot_request.message.text
+        return message_text and message_text == '/start'

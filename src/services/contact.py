@@ -28,7 +28,7 @@ class ContactService:
     def touch(self, contact: Contact) -> None:
         contact.save()
 
-    def get_recently_active_users(self, limit: int = 10):
+    def get_recently_active_contacts(self, limit: int = 10):
         return Contact \
             .filter() \
             .order_by(Contact.last_access.desc()) \
@@ -44,6 +44,15 @@ class ContactService:
         if random_sort:
             contacts = contacts.order_by(fn.Random())
         return contacts.objects()
+
+    def get_engaged_contacts(self):
+        return self.get_by_filter(
+            (Contact.active == True) |
+            (Contact.count_requests > 0)
+        )
+
+    def get_by_filter(self, filter):
+        return Contact.select().where(filter).objects()
 
     def get_all(self):
         return Contact.filter().objects()

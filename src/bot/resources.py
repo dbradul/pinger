@@ -226,8 +226,8 @@ class TelegramResource(Resource):
     MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT = 'Force OFFLINE'
     MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT = '❌UNForce ONLINE'
     MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT = '❌UNForce OFFLINE'
-    MSG_ADMIN_FORCED_RESEND_TEXT = 'RESEND'
-    MSG_ADMIN_ADV_MESSAGE_TEXT = 'SEND ADV'
+    MSG_ADMIN_FORCED_RESEND_TEXT = 'R_E_S_E_N_D'
+    # MSG_ADMIN_ADV_MESSAGE_TEXT = 'SEND ADV'
 
     def _get_common_keyboard(self, is_subscribed):
         if is_subscribed:
@@ -258,9 +258,9 @@ class TelegramResource(Resource):
                 KeyboardButton(self.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT),
                 KeyboardButton(self.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT)
             ],
-            # [
-            #     KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
-            # ],
+            [
+                KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
+            ],
             # [
             #     KeyboardButton(self.MSG_ADMIN_ADV_MESSAGE_TEXT)
             # ],

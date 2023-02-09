@@ -30,10 +30,12 @@ class Container(containers.DeclarativeContainer):
     config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
     config.TELEGRAM_ADMIN_IDS.from_env("TELEGRAM_ADMIN_IDS")
 
+    config.OUTLIERS_FILEPATH.from_env("OUTLIERS_FILEPATH")
+
     # Bot
     viber_bot_api_configuration = providers.Singleton(
         viberbot.BotConfiguration,
-        name='Світло 4-10',
+        name='Світло 4, 10',
         avatar='http://site.com/avatar.jpg',
         auth_token=config.VIBER_API_TOKEN()
     )
@@ -103,6 +105,7 @@ class Container(containers.DeclarativeContainer):
         services.PingerListener,
         contact_service=contact_service,
         history_service=history_service,
-        messenger_bot=messenger_bot
+        messenger_bot=messenger_bot,
+        failed_contacts_filepath=config.OUTLIERS_FILEPATH()
     )
 
