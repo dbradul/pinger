@@ -10,7 +10,6 @@ from app.containers import Container
 
 
 FLASK_PORT = os.getenv('FLASK_PORT')
-FLASK_DEBUG = bool(os.getenv('FLASK_DEBUG'))
 BACKEND_STARTUP_DELAY = float(os.getenv('BACKEND_STARTUP_DELAY'))
 
 
@@ -26,15 +25,17 @@ if __name__ == "__main__":
 
     container = Container()
     container.init_resources()
-    container.wire(modules=[
-        'web.handlers',
-        # 'web.views',
-    ])
+    # container.wire(modules=[
+    #     # 'services.message_handlers',
+    #     'web.views',
+    # ])
 
     pinger = container.pinger()
     pinger_listener = container.pinger_listener()
     pinger.add_listener(pinger_listener)
     pinger.start()
 
+    logger.info('Configuring Flask app...')
     app = create_app()
+    logger.info('Running Flask app...')
     app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)

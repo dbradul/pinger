@@ -7,6 +7,10 @@ import services
 
 from dependency_injector import containers, providers
 
+import web
+# from web.handlers import register, init_db
+
+
 class Container(containers.DeclarativeContainer):
     # config = providers.Configuration(ini_files=["config.ini"])
     #
@@ -31,6 +35,8 @@ class Container(containers.DeclarativeContainer):
     config.TELEGRAM_ADMIN_IDS.from_env("TELEGRAM_ADMIN_IDS")
 
     config.OUTLIERS_FILEPATH.from_env("OUTLIERS_FILEPATH")
+    config.RATE_LIMIT_CALL_NUM.from_env("RATE_LIMIT_CALL_NUM")
+    config.RATE_LIMIT_PERIOD_SEC.from_env("RATE_LIMIT_PERIOD_SEC")
 
     # Bot
     viber_bot_api_configuration = providers.Singleton(
@@ -85,6 +91,7 @@ class Container(containers.DeclarativeContainer):
         services.HistoryService
     )
 
+
     # Pinger
     ssh_remote_host = providers.Factory(
         common.remote_host.SSHRemoteHost,
@@ -109,3 +116,71 @@ class Container(containers.DeclarativeContainer):
         failed_contacts_filepath=config.OUTLIERS_FILEPATH()
     )
 
+    # Web
+    wiring_config = containers.WiringConfiguration(
+        modules=[
+            "web.views"
+        ],
+    )
+
+    message_handler = providers.Selector(
+        config.BOT_BACKEND,
+        viber=providers.Factory(
+            services.ViberMessageHandler,
+            messenger_bot=messenger_bot,
+            contact_service=contact_service,
+            pinger=pinger,
+            outliers_filepath=config.OUTLIERS_FILEPATH(),
+            rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
+            rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
+        ),
+        telegram=providers.Factory(
+            services.TelegramMessageHandler,
+            messenger_bot=messenger_bot,
+            contact_service=contact_service,
+            pinger=pinger,
+            outliers_filepath=config.OUTLIERS_FILEPATH(),
+            rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
+            rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
+        ),
+    )
+
+    # routes = providers.List(
+    #     providers.Factory(
+    #         web.router.Route,
+    #         url='/incoming',
+    #         view_func=incoming_webhook.provider,
+    #         methods=['POST']
+    #     ),
+    #     providers.Factory(
+    #         web.router.Route,
+    #         url='/register',
+    #         view_func=providers.Callable(
+    #             web.views.register,
+    #             messenger_bot=messenger_bot
+    #         ).provider,
+    #         methods=['GET']
+    #     ),
+    #     providers.Factory(
+    #         web.router.Route,
+    #         url='/init_db',
+    #         view_func=providers.Callable(
+    #             web.views.init_db,
+    #             messenger_bot=messenger_bot
+    #         ).provider,
+    #         methods=['GET']
+    #     )
+    # )
+    #
+    # # routes = [
+    # #     web.router.Route(
+    # #         url='/incoming',
+    # #         view_func=incoming_webhook.provider,
+    # #         methods=['POST']
+    # #     )
+    # # ]
+    #
+    # router = providers.Factory(
+    #     web.router.Router,
+    #     routes=routes
+    # )
