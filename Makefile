@@ -45,7 +45,7 @@ apply-migration-name:
 	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db --name $(n) && cd ..
 
 test:
-	pipenv run pytest -s -v ./src/tests
+	pipenv run pytest -s -v ./src/tests --show-setup
 
 export:
 	export $(cat .env | sed 's/#.*//g' | xargs)

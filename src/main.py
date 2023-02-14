@@ -26,7 +26,6 @@ if __name__ == "__main__":
     container = Container()
     container.init_resources()
     # container.wire(modules=[
-    #     # 'services.message_handlers',
     #     'web.views',
     # ])
 
@@ -36,6 +35,6 @@ if __name__ == "__main__":
     pinger.start()
 
     logger.info('Configuring Flask app...')
-    app = create_app()
+    app = create_app(container)
     logger.info('Running Flask app...')
     app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)

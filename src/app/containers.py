@@ -7,9 +7,6 @@ import services
 
 from dependency_injector import containers, providers
 
-import web
-# from web.handlers import register, init_db
-
 
 class Container(containers.DeclarativeContainer):
     # config = providers.Configuration(ini_files=["config.ini"])
@@ -18,7 +15,6 @@ class Container(containers.DeclarativeContainer):
     #     logging.config.fileConfig,
     #     fname="logging.ini",
     # )
-
 
     # Config
     config = providers.Configuration()
@@ -64,7 +60,6 @@ class Container(containers.DeclarativeContainer):
         bot.resources.TelegramResource
     )
 
-
     # Services
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
@@ -90,7 +85,6 @@ class Container(containers.DeclarativeContainer):
     history_service = providers.Factory(
         services.HistoryService
     )
-
 
     # Pinger
     ssh_remote_host = providers.Factory(
@@ -144,43 +138,3 @@ class Container(containers.DeclarativeContainer):
             rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
         ),
     )
-
-    # routes = providers.List(
-    #     providers.Factory(
-    #         web.router.Route,
-    #         url='/incoming',
-    #         view_func=incoming_webhook.provider,
-    #         methods=['POST']
-    #     ),
-    #     providers.Factory(
-    #         web.router.Route,
-    #         url='/register',
-    #         view_func=providers.Callable(
-    #             web.views.register,
-    #             messenger_bot=messenger_bot
-    #         ).provider,
-    #         methods=['GET']
-    #     ),
-    #     providers.Factory(
-    #         web.router.Route,
-    #         url='/init_db',
-    #         view_func=providers.Callable(
-    #             web.views.init_db,
-    #             messenger_bot=messenger_bot
-    #         ).provider,
-    #         methods=['GET']
-    #     )
-    # )
-    #
-    # # routes = [
-    # #     web.router.Route(
-    # #         url='/incoming',
-    # #         view_func=incoming_webhook.provider,
-    # #         methods=['POST']
-    # #     )
-    # # ]
-    #
-    # router = providers.Factory(
-    #     web.router.Router,
-    #     routes=routes
-    # )

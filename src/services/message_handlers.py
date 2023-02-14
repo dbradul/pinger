@@ -2,7 +2,6 @@ import os
 import traceback
 
 from datetime import datetime
-# from dependency_injector.wiring import inject, Provide
 from viberbot.api.viber_requests import (
     ViberMessageRequest,
     ViberUnsubscribedRequest,
@@ -10,7 +9,6 @@ from viberbot.api.viber_requests import (
     ViberFailedRequest
 )
 
-# from app.containers import Container
 from common.helpers import TextStyle, ScopeRateLimiter
 from common.logger import logger
 from common.models import Contact
@@ -18,10 +16,6 @@ from . import ContactService, MessengerBot, Pinger
 
 
 class MessageHandler:
-    # OUTLIERS_FILEPATH = os.getenv('OUTLIERS_FILEPATH')
-    # RATE_LIMIT_CALL_NUM = os.getenv('RATE_LIMIT_CALL_NUM')
-    # RATE_LIMIT_PERIOD_SEC = os.getenv('RATE_LIMIT_PERIOD_SEC')
-
     def __init__(
             self,
             messenger_bot: MessengerBot,
@@ -130,38 +124,33 @@ class MessageHandler:
             )
 
         elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-            invitation = ('Вітаю' if contact.name == 'Subscriber'
-                          else f'Вітаю, {contact.name}')
-            adv_message = f'''{invitation}!
+            adv_message = None
+            adv_file_path = './data/advertisement.txt'
+            if os.path.isfile(adv_file_path):
+                with open(adv_file_path, 'r') as f:
+                    adv_message = f.read()
+            else:
+                logger.error(f"File {adv_file_path} not found!")
 
-Через обмеження у Вайбері найближчим часом можуть перестати приходити повідомлення про вмикання/вимикання світла.
-
-Обмеження стосуються повідомлень від самого бота, але не відповідей користувачеві. Тобто кнопка “Світло є?” буде працювати як зазвичай.
-
-Єдиний спосіб обійти ці обмеження - це змінити месенджер.
-
-Тому, якщо ви зацікавлені стабільно отримувати повідомлення про світло, можна підключитись до бота в Телеграм.
-
-Бот в Вайбері продовжить працювати як звичайно.
-
-Посилання: https://t.me/gem04_bot
-                '''
-            logger.info(f"Sending adv. message...")
-            # all_contacts = contact_service.get_all()
-            engaged_contacts = self._contact_service.get_engaged_contacts()
-            logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
-            for contact in engaged_contacts:
-                keyboard = self._messenger_bot.get_keyboard(contact)
-                try:
-                    logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
-                    self._messenger_bot.send_message(
-                        contact_id=contact.id,
-                        message=adv_message,
-                        keyboard=keyboard
-                    )
-                except Exception as e:
-                    logger.error(f"Error sending ADV. message to {contact.id}: {e}")
-                    # logger.error(traceback.format_exc())
+            if adv_message:
+                logger.info(f"Sending adv. message...")
+                # all_contacts = contact_service.get_all()
+                engaged_contacts = self._contact_service.get_engaged_contacts()
+                logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
+                for engaged_contact in engaged_contacts:
+                    invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
+                                  else f'Вітаю, {engaged_contact.name}')
+                    keyboard = self._messenger_bot.get_keyboard(contact)
+                    try:
+                        logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
+                        self._messenger_bot.send_message(
+                            contact_id=contact.id,
+                            message=adv_message.format(invitation=invitation),
+                            keyboard=keyboard
+                        )
+                    except Exception as e:
+                        logger.error(f"Error sending ADV. message to {contact.id}: {e}")
+                        # logger.error(traceback.format_exc())
 
         elif message == self._messenger_bot.resource.MSG_ADMIN_FORCED_RESEND_TEXT:
             current_state = self._pinger.get_current_state_info(bot=True)
@@ -403,167 +392,3 @@ class TelegramMessageHandler(MessageHandler):
             logger.error(traceback.format_exc())
 
         return True
-
-# @inject
-# def _handle_chat_message(
-#         message: str,
-#         contact: Contact,
-#         contact_service: ContactService = Provide[Container.contact_service],
-#         messenger_bot: MessengerBot = Provide[Container.messenger_bot],
-#         pinger: Pinger = Provide[Container.pinger],
-# ) -> None:
-#     logger.info(f"MESSAGE: {message}, CONTACT: {contact.id}, {contact.name}")
-#     keyboard = messenger_bot.get_keyboard(contact)
-#     contact_id = contact.id
-#
-#     if message == messenger_bot.resource.MSG_QUESTION_TEXT:
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message=pinger.get_current_state_info(),
-#             keyboard=keyboard
-#         )
-#         contact_service.increase_requests_counter(contact)
-#
-#     elif message == messenger_bot.resource.MSG_SUBSCRIBE_TEXT:
-#         contact_service.subscribe(contact)
-#         keyboard = messenger_bot.get_keyboard(contact)
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message='Підписано на розсилку',
-#             keyboard=keyboard
-#         )
-#
-#     elif message == messenger_bot.resource.MSG_UNSUBSCRIBE_TEXT:
-#         contact_service.unsubscribe(contact)
-#         keyboard = messenger_bot.get_keyboard(contact)
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message='Відписано від розсилки',
-#             keyboard=keyboard
-#         )
-#
-#     elif message == messenger_bot.resource.MSG_ADMIN_STATS_TEXT:
-#         contacts = contact_service.get_recently_active_contacts()
-#         for contact in contacts:
-#             messenger_bot.send_message(
-#                 contact_id=contact_id,
-#                 message=messenger_bot.render_text(
-#                     text=contact.formatted_info(),
-#                     style=TextStyle.CODE
-#                 ),
-#                 keyboard=keyboard
-#             )
-#
-#     elif message in (messenger_bot.resource.MSG_ADMIN_MASK_TEXT, messenger_bot.resource.MSG_ADMIN_UNMASK_TEXT):
-#         pinger.masked = not pinger.masked
-#         messenger_bot.masked = not messenger_bot.masked  # FIXME: duplicated info
-#         keyboard = messenger_bot.get_keyboard(contact)
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message=f'Розсилка повідомлень: {"ВИМКНЕНО" if pinger.masked else "УВІМКНЕНО"}!',
-#             keyboard=keyboard
-#         )
-#
-#     elif message in (
-#             messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT,
-#             messenger_bot.resource.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
-#     ):
-#         logger.info(f"Enabling forced state: {pinger.forced_state}")
-#         pinger.forced_state = message == messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
-#         messenger_bot.forced_state = message == messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT # FIXME: duplicated info
-#         keyboard = messenger_bot.get_keyboard(contact)
-#         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message=f'Forced state: {forced_state_str}',
-#             keyboard=keyboard
-#         )
-#
-#     elif message in (
-#             messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT,
-#             messenger_bot.resource.MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT
-#     ):
-#         logger.info(f"Disabling forced state: {pinger.forced_state}")
-#         pinger.forced_state = None
-#         messenger_bot.forced_state = None   # FIXME: duplicated info
-#         forced_state_str = "DISABLED" if pinger.forced_state is None else str(pinger.forced_state).upper()
-#         keyboard = messenger_bot.get_keyboard(contact)
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message=f'Forced state: {forced_state_str}',
-#             keyboard=keyboard
-#         )
-#
-#     elif message == messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-#         invitation = ('Вітаю' if contact.name == 'Subscriber'
-#                       else f'Вітаю, {contact.name}')
-#         adv_message = f'''{invitation}!
-#
-# Через обмеження у Вайбері найближчим часом можуть перестати приходити повідомлення про вмикання/вимикання світла.
-#
-# Обмеження стосуються повідомлень від самого бота, але не відповідей користувачеві. Тобто кнопка “Світло є?” буде працювати як зазвичай.
-#
-# Єдиний спосіб обійти ці обмеження - це змінити месенджер.
-#
-# Тому, якщо ви зацікавлені стабільно отримувати повідомлення про світло, можна підключитись до бота в Телеграм.
-#
-# Бот в Вайбері продовжить працювати як звичайно.
-#
-# Посилання: https://t.me/gem04_bot
-#         '''
-#         logger.info(f"Sending adv. message...")
-#         # all_contacts = contact_service.get_all()
-#         engaged_contacts = contact_service.get_engaged_contacts()
-#         logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
-#         for contact in engaged_contacts:
-#             keyboard = messenger_bot.get_keyboard(contact)
-#             try:
-#                 logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
-#                 messenger_bot.send_message(
-#                     contact_id=contact.id,
-#                     message=adv_message,
-#                     keyboard=keyboard
-#                 )
-#             except Exception as e:
-#                 logger.error(f"Error sending ADV. message to {contact.id}: {e}")
-#                 # logger.error(traceback.format_exc())
-#
-#     elif message == messenger_bot.resource.MSG_ADMIN_FORCED_RESEND_TEXT:
-#         current_state = pinger.get_current_state_info(bot=True)
-#         failed_outliers = []
-#         with open(OUTLIERS_FILEPATH, 'r') as f:
-#             outliers = f.read().splitlines()
-#             for outlier in outliers:
-#                 contact_id = outlier.strip()
-#                 contact = Contact.get_or_none(Contact.id == contact_id)
-#                 keyboard = messenger_bot.get_keyboard(contact)
-#                 logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
-#                 try:
-#                     messenger_bot.send_message(
-#                         contact_id=contact.id,
-#                         message=current_state,
-#                         keyboard=keyboard
-#                     )
-#                 except Exception as e:
-#                     logger.error(f'RESEND FAILED WITH ERROR: {e}')
-#                     failed_outliers.append(contact_id)
-#                     logger.error(traceback.format_exc())
-#
-#         if failed_outliers:
-#             logger.error(f"DUMPING FAILED OUTLIERS: {len(failed_outliers)} contacts")
-#         else:
-#             logger.error(f"RESEND IS SUCCESSFUL! NO FAILED OUTLIERS!")
-#
-#         with open(OUTLIERS_FILEPATH, 'w') as f:
-#             f.write('\n'.join(failed_outliers))
-#
-#     else:
-#         messenger_bot.send_message(
-#             contact_id=contact_id,
-#             message=messenger_bot.render_text(
-#                 text='Невідома команда',
-#                 style=TextStyle.ITALIC
-#             ),
-#             keyboard=keyboard
-#         )
-

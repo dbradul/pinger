@@ -7,7 +7,6 @@ from services import MessengerBot
 
 
 class ContactService:
-
     def __init__(self, messenger_bot: MessengerBot):
         self._messenger_bot = messenger_bot
 

@@ -25,13 +25,10 @@ class MessengerBot:
         self.forced_state = None
         self._admin_ids = admin_ids or []
 
-    def send_message(self, contact_id, message, keyboard=None):
+    def send_message(self, contact_id, message, keyboard=None) -> None:
         raise NotImplementedError('send_message method must be implemented')
 
-    def parse_request(self, data):
-        raise NotImplementedError('parse_request method must be implemented')
-
-    def parse_request(self, data):
+    def parse_request(self, data: bytes):
         raise NotImplementedError('parse_request method must be implemented')
 
     def set_webhook(self, webhook_url):
@@ -55,10 +52,6 @@ class MessengerBot:
             return text
 
     def get_keyboard(self, contact: Union[None, Contact]):
-        # is_admin = contact and contact.id in self._admin_ids
-        # is_subscribed = contact and contact.active
-        # is_masked = self._messenger_bot.masked
-        # is_forced_state = self._messenger_bot.forced_state
         return self.resource.get_keyboard(
             is_admin=contact and contact.id in self._admin_ids,
             is_subscribed=contact and contact.active,
@@ -85,7 +78,7 @@ class ViberMessengerBot(MessengerBot):
     def verify_message_signature(self, request_data, request_headers):
         return self._api_client.verify_signature(request_data, request_headers.get('X-Viber-Content-Signature'))
 
-    def parse_request(self, data):
+    def parse_request(self, data: bytes):
         return self._api_client.parse_request(data)
 
     @classmethod
@@ -115,7 +108,7 @@ class TelegramMessengerBot(MessengerBot):
     def verify_message_signature(self, request_data, request_headers):
         return True
 
-    def parse_request(self, data):
+    def parse_request(self, data: bytes):
         json_data = json.loads(data.decode())
         return telegram.Update.de_json(json_data, self._api_client)
 
