@@ -35,6 +35,16 @@ def test_db(app):
     test_db.close()
 
 
+@pytest.fixture(autouse=True)
+def populate_db(test_db):
+    Contact.insert_many([
+        {'id': 1, 'last_access': '2023-01-01', 'name': 'Test User1', 'active': 1, 'count_requests': 0},
+        {'id': 2, 'last_access': '2023-01-01', 'name': 'Test User2', 'active': 1, 'count_requests': 1},
+        {'id': 3, 'last_access': '2023-01-01', 'name': 'Test User3', 'active': 0, 'count_requests': 0},
+        {'id': 4, 'last_access': '2023-01-01', 'name': 'Test User4', 'active': 0, 'count_requests': 1},
+    ]).execute()
+
+
 @pytest.fixture()
 def random_user() -> Contact:
     return (

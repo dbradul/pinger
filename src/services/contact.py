@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from peewee import fn
+from peewee import fn, ModelSelect
+from typing import List
 
 from common.models import Contact
 from services import MessengerBot
@@ -27,14 +28,14 @@ class ContactService:
     def touch(self, contact: Contact) -> None:
         contact.save()
 
-    def get_recently_active_contacts(self, limit: int = 10):
+    def get_recently_active_contacts(self, limit: int = 10) -> ModelSelect:
         return Contact \
             .filter() \
             .order_by(Contact.last_access.desc()) \
             .limit(limit) \
             .objects()
 
-    def get_subscribers(self, random_sort: bool = False):
+    def get_subscribers(self, random_sort: bool = False) -> ModelSelect:
         # look_back_window = datetime.utcnow() - timedelta(minutes=0)
         contacts = Contact.filter(
             Contact.active == True,
@@ -44,14 +45,14 @@ class ContactService:
             contacts = contacts.order_by(fn.Random())
         return contacts.objects()
 
-    def get_engaged_contacts(self):
+    def get_engaged_contacts(self) -> ModelSelect:
         return self.get_by_filter(
             (Contact.active == True) |
             (Contact.count_requests > 0)
         )
 
-    def get_by_filter(self, filter):
+    def get_by_filter(self, filter) -> ModelSelect:
         return Contact.select().where(filter).objects()
 
-    def get_all(self):
+    def get_all(self) -> ModelSelect:
         return Contact.filter().objects()

@@ -123,34 +123,67 @@ class MessageHandler:
                 keyboard=keyboard
             )
 
-        elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-            adv_message = None
-            adv_file_path = './data/advertisement.txt'
-            if os.path.isfile(adv_file_path):
-                with open(adv_file_path, 'r') as f:
-                    adv_message = f.read()
-            else:
-                logger.error(f"File {adv_file_path} not found!")
+        # elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
+        #     adv_message = None
+        #     adv_file_path = './data/advertisement.txt'
+        #     if os.path.isfile(adv_file_path):
+        #         with open(adv_file_path, 'r') as f:
+        #             adv_message = f.read()
+        #     else:
+        #         logger.error(f"File {adv_file_path} not found!")
+        #
+        #     if adv_message:
+        #         logger.info(f"Sending adv. message...")
+        #         # all_contacts = contact_service.get_all()
+        #         engaged_contacts = self._contact_service.get_engaged_contacts()
+        #         logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
+        #         for engaged_contact in engaged_contacts:
+        #             invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
+        #                           else f'Вітаю, {engaged_contact.name}')
+        #             keyboard = self._messenger_bot.get_keyboard(contact)
+        #             try:
+        #                 logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
+        #                 self._messenger_bot.send_message(
+        #                     contact_id=contact.id,
+        #                     message=adv_message.format(invitation=invitation),
+        #                     keyboard=keyboard
+        #                 )
+        #             except Exception as e:
+        #                 logger.error(f"Error sending ADV. message to {contact.id}: {e}")
+        #                 # logger.error(traceback.format_exc())
 
-            if adv_message:
-                logger.info(f"Sending adv. message...")
-                # all_contacts = contact_service.get_all()
-                engaged_contacts = self._contact_service.get_engaged_contacts()
-                logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
-                for engaged_contact in engaged_contacts:
-                    invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
-                                  else f'Вітаю, {engaged_contact.name}')
-                    keyboard = self._messenger_bot.get_keyboard(contact)
+        elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
+            # adv_message = None
+            # adv_file_path = './data/advertisement.txt'
+            # if os.path.isfile(adv_file_path):
+            #     with open(adv_file_path, 'r') as f:
+            #         adv_message = f.read()
+            # else:
+            #     logger.error(f"File {adv_file_path} not found!")
+            #
+            # if adv_message:
+            logger.info(f"Sending adv. message...")
+            # all_contacts = contact_service.get_all()
+            engaged_contacts = self._contact_service.get_engaged_contacts()
+            logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
+            for engaged_contact in engaged_contacts:
+                # invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
+                #               else f'Вітаю, {engaged_contact.name}')
+                adv_message = self.prepare_adv_message(engaged_contact)
+                keyboard = self._messenger_bot.get_keyboard(contact)
+                if adv_message:
                     try:
-                        logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
+                        logger.info(f"Sending ADV. message to {engaged_contact.id}, {engaged_contact.name}")
                         self._messenger_bot.send_message(
-                            contact_id=contact.id,
-                            message=adv_message.format(invitation=invitation),
+                            contact_id=engaged_contact.id,
+                            message=adv_message,
                             keyboard=keyboard
                         )
                     except Exception as e:
-                        logger.error(f"Error sending ADV. message to {contact.id}: {e}")
-                        # logger.error(traceback.format_exc())
+                        logger.error(f"Error sending ADV. message to {engaged_contact.id}: {e}")
+                    # logger.error(traceback.format_exc())
+                else:
+                    logger.error(f"Error preparing ADV. message for {engaged_contact.id}")
 
         elif message == self._messenger_bot.resource.MSG_ADMIN_FORCED_RESEND_TEXT:
             current_state = self._pinger.get_current_state_info(bot=True)
@@ -191,6 +224,24 @@ class MessageHandler:
                 keyboard=keyboard
             )
 
+    def prepare_adv_message(self, contact: Contact) -> str:
+        result = ''
+        adv_file_path = './data/advertisement.txt'
+        # adv_file_path = '/Users/dmytriybradul/Work/pinger/data/advertisement.txt'
+        if os.path.isfile(adv_file_path):
+            with open(adv_file_path, 'r') as f:
+                adv_message = f.read()
+            invitation = ('Вітаю' if contact.name == 'Subscriber'
+                          else f'Вітаю, {contact.name}')
+            result = adv_message.format(invitation=invitation)
+        else:
+            logger.error(f"File {adv_file_path} not found!")
+
+        # if adv_message:
+        #     invitation = ('Вітаю' if contact.name == 'Subscriber'
+        #                   else f'Вітаю, {contact.name}')
+        #     result = adv_message.format(invitation=invitation)
+        return result
 
 class ViberMessageHandler(MessageHandler):
 
