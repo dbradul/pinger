@@ -1,11 +1,14 @@
 import viberbot
 import telegram
+from threading import Thread
 
 import bot.resources
 import common
 import services
 
 from dependency_injector import containers, providers
+
+from common.helpers import kick_off_requests_on_startup
 
 
 class Container(containers.DeclarativeContainer):
@@ -33,6 +36,11 @@ class Container(containers.DeclarativeContainer):
     config.OUTLIERS_FILEPATH.from_env("OUTLIERS_FILEPATH")
     config.RATE_LIMIT_CALL_NUM.from_env("RATE_LIMIT_CALL_NUM")
     config.RATE_LIMIT_PERIOD_SEC.from_env("RATE_LIMIT_PERIOD_SEC")
+
+    config.BACKEND_STARTUP_DELAY.from_env("BACKEND_STARTUP_DELAY", as_=int)
+    config.FLASK_PORT.from_env("FLASK_PORT", as_=int)
+
+
 
     # Bot
     viber_bot_api_configuration = providers.Singleton(
@@ -137,4 +145,15 @@ class Container(containers.DeclarativeContainer):
             rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
             rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
         ),
+    )
+
+    # Init
+    init_thread = providers.Resource(
+        Thread,
+        target=kick_off_requests_on_startup,
+        daemon=True,
+        kwargs={
+            "startup_delay": config.BACKEND_STARTUP_DELAY(),
+            "flask_port": config.FLASK_PORT()
+        }
     )

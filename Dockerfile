@@ -14,6 +14,6 @@ COPY ./Pipfile.lock ./Pipfile.lock
 
 RUN python -m pip install --upgrade pip
 RUN python -m pip install pipenv
-RUN pipenv install --system --deploy --ignore-pipfile
+RUN pipenv install --system --deploy --ignore-pipfile --dev
 
 CMD ["bash"]

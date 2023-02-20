@@ -98,10 +98,11 @@ class MessageHandler:
                 self._messenger_bot.resource.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
         ):
             logger.info(f"Enabling forced state: {self._pinger.forced_state}")
-            self._pinger.forced_state = message == self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
-            self._messenger_bot.forced_state = message == self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT  # FIXME: duplicated info
+            forced_state = message == self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+            self._pinger.forced_state = forced_state
+            self._messenger_bot.forced_state = forced_state  # FIXME: duplicated info, potential inconsistency
             keyboard = self._messenger_bot.get_keyboard(contact)
-            forced_state_str = "DISABLED" if self._pinger.forced_state is None else str(self._pinger.forced_state).upper()
+            forced_state_str = str(self._pinger.forced_state).upper()
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=f'Forced state: {forced_state_str}',
@@ -114,8 +115,8 @@ class MessageHandler:
         ):
             logger.info(f"Disabling forced state: {self._pinger.forced_state}")
             self._pinger.forced_state = None
-            self._messenger_bot.forced_state = None  # FIXME: duplicated info
-            forced_state_str = "DISABLED" if self._pinger.forced_state is None else str(self._pinger.forced_state).upper()
+            self._messenger_bot.forced_state = None  # FIXME: duplicated info, potential inconsistency
+            forced_state_str = "DISABLED"
             keyboard = self._messenger_bot.get_keyboard(contact)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
@@ -123,52 +124,11 @@ class MessageHandler:
                 keyboard=keyboard
             )
 
-        # elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-        #     adv_message = None
-        #     adv_file_path = './data/advertisement.txt'
-        #     if os.path.isfile(adv_file_path):
-        #         with open(adv_file_path, 'r') as f:
-        #             adv_message = f.read()
-        #     else:
-        #         logger.error(f"File {adv_file_path} not found!")
-        #
-        #     if adv_message:
-        #         logger.info(f"Sending adv. message...")
-        #         # all_contacts = contact_service.get_all()
-        #         engaged_contacts = self._contact_service.get_engaged_contacts()
-        #         logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
-        #         for engaged_contact in engaged_contacts:
-        #             invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
-        #                           else f'Вітаю, {engaged_contact.name}')
-        #             keyboard = self._messenger_bot.get_keyboard(contact)
-        #             try:
-        #                 logger.info(f"Sending ADV. message to {contact.id}, {contact.name}")
-        #                 self._messenger_bot.send_message(
-        #                     contact_id=contact.id,
-        #                     message=adv_message.format(invitation=invitation),
-        #                     keyboard=keyboard
-        #                 )
-        #             except Exception as e:
-        #                 logger.error(f"Error sending ADV. message to {contact.id}: {e}")
-        #                 # logger.error(traceback.format_exc())
-
         elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
-            # adv_message = None
-            # adv_file_path = './data/advertisement.txt'
-            # if os.path.isfile(adv_file_path):
-            #     with open(adv_file_path, 'r') as f:
-            #         adv_message = f.read()
-            # else:
-            #     logger.error(f"File {adv_file_path} not found!")
-            #
-            # if adv_message:
             logger.info(f"Sending adv. message...")
-            # all_contacts = contact_service.get_all()
             engaged_contacts = self._contact_service.get_engaged_contacts()
             logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
             for engaged_contact in engaged_contacts:
-                # invitation = ('Вітаю' if engaged_contact.name == 'Subscriber'
-                #               else f'Вітаю, {engaged_contact.name}')
                 adv_message = self.prepare_adv_message(engaged_contact)
                 keyboard = self._messenger_bot.get_keyboard(contact)
                 if adv_message:
@@ -227,21 +187,22 @@ class MessageHandler:
     def prepare_adv_message(self, contact: Contact) -> str:
         result = ''
         adv_file_path = './data/advertisement.txt'
-        # adv_file_path = '/Users/dmytriybradul/Work/pinger/data/advertisement.txt'
         if os.path.isfile(adv_file_path):
             with open(adv_file_path, 'r') as f:
                 adv_message = f.read()
-            invitation = ('Вітаю' if contact.name == 'Subscriber'
-                          else f'Вітаю, {contact.name}')
+            invitation = self._contact_service.get_greeting(contact)
             result = adv_message.format(invitation=invitation)
         else:
             logger.error(f"File {adv_file_path} not found!")
-
-        # if adv_message:
-        #     invitation = ('Вітаю' if contact.name == 'Subscriber'
-        #                   else f'Вітаю, {contact.name}')
-        #     result = adv_message.format(invitation=invitation)
         return result
+
+    def get_new_contact_invitation(self, contact: Contact) -> str:
+        greeting = self._contact_service.get_greeting(contact)
+        invitation = f"{greeting}! 🙌\n\n"
+        "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
+        "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
+        return invitation
+
 
 class ViberMessageHandler(MessageHandler):
 
@@ -288,17 +249,33 @@ class ViberMessageHandler(MessageHandler):
                 contact = Contact.get_or_none(Contact.id == bot_request.user.id)
                 keyboard = self._messenger_bot.get_keyboard(contact)
                 if contact is None:
-                    username = bot_request.user.name
-                    invitation = 'Вітаю' if username == 'Subscriber' else \
-                        f'Вітаю, {bot_request.user.name}'
+                    contact = Contact.create(
+                        id=bot_request.user.id,
+                        name=bot_request.user.name,
+                        active=False,
+                        last_access=datetime.utcnow()
+                    )
+                    invitation = self.get_new_contact_invitation(contact)
                     self._messenger_bot.send_message(
                         contact_id=bot_request.user.id,
-                        message=f"{invitation}! 🙌\n\n"
-"Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
-"Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
-"""
+                        # contact_id=contact.id,
+                        message=invitation,
+                        keyboard=keyboard
+                    )
 
+            elif isinstance(bot_request, ViberFailedRequest):
+                logger.warning("Client failed to receive message. Failure: {0}".format(bot_request))
 
+        except Exception as e:
+            logger.error(f'GENERAL ERROR: {e}')
+            logger.error(traceback.format_exc())
+
+        return True
+
+    def get_new_contact_invitation(self, contact) -> str:
+        base_invitation = super().get_new_contact_invitation(contact)
+        full_invitation = f"{base_invitation}\n\n"
+        """
 ️👇 ВАЖЛИВО! 👇
 
 Через обмеження у Вайбері з часом можуть перестати приходити повідомлення про вмикання/вимикання світла.
@@ -312,23 +289,7 @@ class ViberMessageHandler(MessageHandler):
 Бот в Вайбері продовжить працювати як звичайно.
 
 Посилання: https://t.me/gem04_bot"""
-                        ,
-                        keyboard=keyboard
-                    )
-                    Contact.create(
-                        id=bot_request.user.id,
-                        name=bot_request.user.name,
-                        active=False,
-                        last_access=datetime.utcnow()
-                    )
-            elif isinstance(bot_request, ViberFailedRequest):
-                logger.warning("Client failed to receive message. Failure: {0}".format(bot_request))
-
-        except Exception as e:
-            logger.error(f'GENERAL ERROR: {e}')
-            logger.error(traceback.format_exc())
-
-        return True
+        return full_invitation
 
 
 class TelegramMessageHandler(MessageHandler):
@@ -358,22 +319,24 @@ class TelegramMessageHandler(MessageHandler):
 
                 if contact is None:
                     # username = bot_request.message.from_user.full_name
-                    username = bot_request.effective_user.full_name
-                    invitation =  'Вітаю' if username == 'Subscriber' else \
-                                 f'Вітаю, {username}'
-                    invitation_message = f"{invitation}! 🙌\n\n" \
-                                 "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n" \
-                                 "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
-                    self._messenger_bot.send_message(
-                        contact_id=user_id,
-                        message=invitation_message,
-                        keyboard=keyboard
-                    )
-                    Contact.create(
+                    contact = Contact.create(
                         id=user_id,
-                        name=username,
+                        name=bot_request.effective_user.full_name,
                         active=False,
                         last_access=datetime.utcnow()
+                    )
+                    # username = bot_request.effective_user.full_name
+                    # invitation =  'Вітаю' if username == 'Subscriber' else \
+                    #              f'Вітаю, {username}'
+                    # invitation_message = f"{invitation}! 🙌\n\n" \
+                    #              "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n" \
+                    #              "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
+                    invitation = self.get_new_contact_invitation(contact)
+                    self._messenger_bot.send_message(
+                        contact_id=user_id,
+                        # message=invitation_message,
+                        message=invitation,
+                        keyboard=keyboard
                     )
                 else:
                     self._messenger_bot.send_message(

@@ -1,8 +1,12 @@
 from concurrent.futures import ThreadPoolExecutor
+from time import sleep
 
 import pytest
 from peewee import fn
 from unittest.mock import Mock, call, patch
+
+from viberbot.api.user_profile import UserProfile
+from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 
 from common.helpers import TextStyle
 from common.models import Contact
@@ -14,14 +18,9 @@ def message_handler(app) -> MessageHandler:
     return app.container.message_handler()
 
 
-# @pytest.fixture(autouse=True)
-# def populate_db(test_db):
-#     Contact.insert_many([
-#         {'id': 1, 'last_access': '2023-01-01', 'name': 'Test User1', 'active': 1, 'count_requests': 0},
-#         {'id': 2, 'last_access': '2023-01-01', 'name': 'Test User2', 'active': 1, 'count_requests': 1},
-#         {'id': 3, 'last_access': '2023-01-01', 'name': 'Test User3', 'active': 0, 'count_requests': 0},
-#         {'id': 4, 'last_access': '2023-01-01', 'name': 'Test User4', 'active': 0, 'count_requests': 1},
-#     ]).execute()
+@pytest.fixture()
+def messenger_bot(app) -> MessengerBot:
+    return app.container.messenger_bot()
 
 
 @pytest.fixture()
@@ -148,3 +147,74 @@ def test_send_adv_message(
 
     for engaged_contact in contact_service.get_engaged_contacts():
         assert engaged_contact.name in message_handler.prepare_adv_message(engaged_contact)
+
+
+def test_user_creation(
+        message_handler: MessageHandler,
+        contact_service: ContactService,
+        # messenger_bot: MessengerBot,
+):
+    # Arrange
+    all_contacts = list(contact_service.get_all())
+
+    message_handler._messenger_bot.verify_message_signature = Mock(return_value=True)
+    message_handler._messenger_bot.parse_request = Mock(
+        return_value=ViberConversationStartedRequest().from_dict({
+            'event': 'conversation_started',
+            'timestamp': 1530000000,
+            'message_token': 4912661846655238145,
+            'type': 'open',
+            'context': 'context information',
+            'user': {
+                "id": "01234567890A=",
+                "name": "John McClane",
+                "avatar": "http://avatar.example.com",
+                "country": "UK",
+                "language": "en",
+                "api_version": 1
+            }
+        })
+    )
+    message_handler._messenger_bot.send_message = Mock(
+        side_effect=lambda *args, **kwargs: print('Sending message...')
+    )
+
+    # Act
+    message_handler.handle_incoming(Mock(), Mock())
+
+    # Assert
+    assert len(contact_service.get_all()) == len(all_contacts) + 1
+
+    new_contact = contact_service.get_by_filter(Contact.id == '01234567890A=')[0]
+
+    message_handler._messenger_bot.send_message.assert_called_once_with(
+        contact_id=new_contact.id,
+        message=message_handler.get_new_contact_invitation(new_contact),
+        keyboard=message_handler._messenger_bot.get_keyboard(new_contact)
+    )
+
+
+def test_user_deletion(
+        message_handler: MessageHandler,
+        contact_service: ContactService,
+        # messenger_bot: MessengerBot,
+):
+    # Arrange
+    all_contacts = list(contact_service.get_all())
+
+    message_handler._messenger_bot.verify_message_signature = Mock(return_value=True)
+    message_handler._messenger_bot.parse_request = Mock(
+        return_value=ViberUnsubscribedRequest().from_dict({
+            'user_id': '1',
+            'event': 'unsubscribed',
+            'timestamp': 1530000000,
+        })
+    )
+
+    # Act
+    message_handler.handle_incoming(Mock(), Mock())
+
+    # Assert
+    assert len(contact_service.get_all()) == len(all_contacts) - 1
+    deleted_contact = contact_service.get_by_filter(Contact.id == '1')
+    assert len(deleted_contact) == 0

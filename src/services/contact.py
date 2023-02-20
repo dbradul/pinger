@@ -56,3 +56,10 @@ class ContactService:
 
     def get_all(self) -> ModelSelect:
         return Contact.filter().objects()
+
+    def get_greeting(self, contact: Contact) -> str:
+        invitation = (
+            'Вітаю' if contact.name == 'Subscriber'
+            else f'Вітаю, {contact.name}'
+        )
+        return invitation
