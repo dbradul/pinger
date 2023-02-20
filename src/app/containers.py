@@ -72,13 +72,13 @@ class Container(containers.DeclarativeContainer):
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
         viber=providers.Singleton(
-            services.ViberMessengerBot,
+            bot.ViberMessengerBot,
             api_client=viber_bot_api,
             resource=viber_resource,
             admin_ids=config.VIBER_ADMIN_IDS
         ),
         telegram=providers.Singleton(
-            services.TelegramMessengerBot,
+            bot.TelegramMessengerBot,
             api_client=tg_bot_api,
             resource=tg_resource,
             admin_ids=config.TELEGRAM_ADMIN_IDS

@@ -4,7 +4,7 @@ from peewee import fn, ModelSelect
 from typing import List
 
 from common.models import Contact
-from services import MessengerBot
+from bot import MessengerBot
 
 
 class ContactService:

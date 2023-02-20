@@ -1,7 +1,7 @@
 import traceback
 
 from common.logger import logger
-from services import MessengerBot
+from bot import MessengerBot
 from services.contact import ContactService
 from services.history import HistoryService
 

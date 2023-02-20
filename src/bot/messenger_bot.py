@@ -4,9 +4,9 @@ from typing import Any, Union
 import telegram
 import viberbot
 from viberbot.api.messages import TextMessage
-from viberbot.api.viber_requests import ViberConversationStartedRequest
+# from viberbot.api.viber_requests import ViberConversationStartedRequest
 
-from bot.resources import Resource
+from .resources import Resource
 from common.helpers import TextStyle
 from common.logger import logger
 from common.models import Contact
@@ -59,8 +59,8 @@ class MessengerBot:
             is_forced_state=self.forced_state
         )
 
-    def is_start_message(self, data: Any) -> bool:
-        raise NotImplementedError('is_start_message method must be implemented')
+    # def is_start_message(self, data: Any) -> bool:
+    #     raise NotImplementedError('is_start_message method must be implemented')
 
 
 class ViberMessengerBot(MessengerBot):
@@ -88,8 +88,8 @@ class ViberMessengerBot(MessengerBot):
         else:
             return super(cls, cls).render_text(text, style)
 
-    def is_start_message(self, bot_request: Any) -> bool:
-        return isinstance(bot_request, ViberConversationStartedRequest)
+    # def is_start_message(self, bot_request: Any) -> bool:
+    #     return isinstance(bot_request, ViberConversationStartedRequest)
 
 
 class TelegramMessengerBot(MessengerBot):
@@ -112,6 +112,6 @@ class TelegramMessengerBot(MessengerBot):
         json_data = json.loads(data.decode())
         return telegram.Update.de_json(json_data, self._api_client)
 
-    def is_start_message(self, bot_request: Any) -> bool:
-        message_text = bot_request.message and bot_request.message.text
-        return message_text and message_text == '/start'
+    # def is_start_message(self, bot_request: Any) -> bool:
+    #     message_text = bot_request.message and bot_request.message.text
+    #     return message_text and message_text == '/start'

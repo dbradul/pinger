@@ -12,7 +12,8 @@ from viberbot.api.viber_requests import (
 from common.helpers import TextStyle, ScopeRateLimiter
 from common.logger import logger
 from common.models import Contact
-from . import ContactService, MessengerBot, Pinger
+from . import ContactService, Pinger
+from bot import MessengerBot
 
 
 class MessageHandler:

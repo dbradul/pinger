@@ -7,7 +7,7 @@ from flask import request, Response
 from app.containers import Container
 from common.logger import logger
 from common.models import Contact, History
-from services import MessengerBot
+from bot import MessengerBot
 from services.message_handlers import MessageHandler
 
 
