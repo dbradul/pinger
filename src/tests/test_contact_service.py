@@ -1,7 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
-
 import pytest
-from peewee import fn
 
 from common.models import Contact
 from services import ContactService

@@ -41,7 +41,6 @@ class Container(containers.DeclarativeContainer):
     config.FLASK_PORT.from_env("FLASK_PORT", as_=int)
 
 
-
     # Bot
     viber_bot_api_configuration = providers.Singleton(
         viberbot.BotConfiguration,
@@ -68,7 +67,6 @@ class Container(containers.DeclarativeContainer):
         bot.resources.TelegramResource
     )
 
-    # Services
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
         viber=providers.Singleton(
@@ -85,14 +83,6 @@ class Container(containers.DeclarativeContainer):
         ),
     )
 
-    contact_service = providers.Factory(
-        services.ContactService,
-        messenger_bot=messenger_bot,
-    )
-
-    history_service = providers.Factory(
-        services.HistoryService
-    )
 
     # Pinger
     ssh_remote_host = providers.Factory(
@@ -110,19 +100,15 @@ class Container(containers.DeclarativeContainer):
         remote_host=ssh_remote_host
     )
 
-    pinger_listener = providers.Factory(
-        services.PingerListener,
-        contact_service=contact_service,
-        history_service=history_service,
+
+    # Services
+    contact_service = providers.Factory(
+        services.ContactService,
         messenger_bot=messenger_bot,
-        failed_contacts_filepath=config.OUTLIERS_FILEPATH()
     )
 
-    # Web
-    wiring_config = containers.WiringConfiguration(
-        modules=[
-            "web.views"
-        ],
+    history_service = providers.Factory(
+        services.HistoryService
     )
 
     message_handler = providers.Selector(
@@ -146,6 +132,23 @@ class Container(containers.DeclarativeContainer):
             rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
         ),
     )
+
+    pinger_listener = providers.Factory(
+        services.PingerListener,
+        contact_service=contact_service,
+        history_service=history_service,
+        messenger_bot=messenger_bot,
+        failed_contacts_filepath=config.OUTLIERS_FILEPATH()
+    )
+
+
+    # Web
+    wiring_config = containers.WiringConfiguration(
+        modules=[
+            "web.views"
+        ],
+    )
+
 
     # Init
     init_thread = providers.Resource(

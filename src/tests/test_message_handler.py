@@ -1,16 +1,13 @@
-from concurrent.futures import ThreadPoolExecutor
-from time import sleep
-
-import pytest
-from peewee import fn
 from unittest.mock import Mock, call, patch
 
-from viberbot.api.user_profile import UserProfile
+import pytest
+from flask import Flask
 from viberbot.api.viber_requests import ViberConversationStartedRequest, ViberUnsubscribedRequest
 
+from bot import MessengerBot
 from common.helpers import TextStyle
 from common.models import Contact
-from services import ContactService, MessengerBot, MessageHandler, Pinger
+from services import ContactService, MessageHandler
 
 
 @pytest.fixture()
@@ -19,8 +16,15 @@ def message_handler(app) -> MessageHandler:
 
 
 @pytest.fixture()
-def messenger_bot(app) -> MessengerBot:
-    return app.container.messenger_bot()
+def messenger_bot(app) -> Mock:
+    messenger_bot_mock = Mock(spec=MessengerBot)
+    messenger_bot_mock.get_keyboard = Mock(return_value=['Button1', 'Button2'])
+    messenger_bot_mock.verify_message_signature = Mock(return_value=True)
+    messenger_bot_mock.send_message = Mock(
+        side_effect=lambda *args, **kwargs: print('Sending message...')
+    )
+    return messenger_bot_mock
+    # return app.container.messenger_bot()
 
 
 @pytest.fixture()
@@ -28,22 +32,6 @@ def contact_service(app) -> ContactService:
     return app.container.contact_service()
 
 
-@pytest.fixture()
-def send_message_mock():
-    with patch("services.message_handlers.MessengerBot.send_message", autospec=True) as m:
-    # with patch("services.messenger_bot.MessengerBot.send_message", autospec=True) as m:
-        yield m
-#
-#
-# @pytest.fixture(autouse=True)
-# def keyboard_mock():
-#     with patch("services.message_handlers.MessengerBot.get_keyboard",
-#                autospec=True,
-#                return_value=['Button1', 'Button2']) as m:
-#         yield m
-
-# @patch('services.messenger_bot.MessengerBot.send_message', autospec=True)
-# @patch('services.messenger_bot.MessengerBot.get_keyboard', autospec=True, return_value=['Button1', 'Button2'])
 def test_handle_chat_message(
         message_handler: MessageHandler,
         random_user: Contact,
@@ -150,15 +138,13 @@ def test_send_adv_message(
 
 
 def test_user_creation(
-        message_handler: MessageHandler,
+        app,
         contact_service: ContactService,
-        # messenger_bot: MessengerBot,
+        messenger_bot: Mock,
 ):
     # Arrange
     all_contacts = list(contact_service.get_all())
-
-    message_handler._messenger_bot.verify_message_signature = Mock(return_value=True)
-    message_handler._messenger_bot.parse_request = Mock(
+    messenger_bot.parse_request = Mock(
         return_value=ViberConversationStartedRequest().from_dict({
             'event': 'conversation_started',
             'timestamp': 1530000000,
@@ -175,35 +161,30 @@ def test_user_creation(
             }
         })
     )
-    message_handler._messenger_bot.send_message = Mock(
-        side_effect=lambda *args, **kwargs: print('Sending message...')
-    )
 
     # Act
-    message_handler.handle_incoming(Mock(), Mock())
+    with app.container.messenger_bot.override(messenger_bot):
+        message_handler = app.container.message_handler()
+        message_handler.handle_incoming('42', 42)
 
     # Assert
     assert len(contact_service.get_all()) == len(all_contacts) + 1
-
     new_contact = contact_service.get_by_filter(Contact.id == '01234567890A=')[0]
-
-    message_handler._messenger_bot.send_message.assert_called_once_with(
+    messenger_bot.send_message.assert_called_once_with(
         contact_id=new_contact.id,
         message=message_handler.get_new_contact_invitation(new_contact),
-        keyboard=message_handler._messenger_bot.get_keyboard(new_contact)
+        keyboard=['Button1', 'Button2']
     )
 
 
 def test_user_deletion(
-        message_handler: MessageHandler,
+        app, ##: Flask,
         contact_service: ContactService,
-        # messenger_bot: MessengerBot,
+        messenger_bot: Mock,
 ):
     # Arrange
     all_contacts = list(contact_service.get_all())
-
-    message_handler._messenger_bot.verify_message_signature = Mock(return_value=True)
-    message_handler._messenger_bot.parse_request = Mock(
+    messenger_bot.parse_request = Mock(
         return_value=ViberUnsubscribedRequest().from_dict({
             'user_id': '1',
             'event': 'unsubscribed',
@@ -212,7 +193,9 @@ def test_user_deletion(
     )
 
     # Act
-    message_handler.handle_incoming(Mock(), Mock())
+    with app.container.messenger_bot.override(messenger_bot):
+        message_handler = app.container.message_handler()
+        message_handler.handle_incoming('42', 42)
 
     # Assert
     assert len(contact_service.get_all()) == len(all_contacts) - 1
