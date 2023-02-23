@@ -51,13 +51,13 @@ class MessengerBot:
         else:
             return text
 
-    def get_keyboard(self, contact: Union[None, Contact]):
-        return self.resource.get_keyboard(
-            is_admin=contact and contact.id in self._admin_ids,
-            is_subscribed=contact and contact.active,
-            is_masked=self.masked,
-            is_forced_state=self.forced_state
-        )
+    # def get_keyboard(self, contact: Union[None, Contact]):
+    #     return self.resource.get_keyboard(
+    #         is_admin=contact and contact.id in self._admin_ids,
+    #         is_subscribed=contact and contact.active,
+    #         is_masked=self.masked,
+    #         is_forced_state=self.forced_state
+    #     )
 
     # def is_start_message(self, data: Any) -> bool:
     #     raise NotImplementedError('is_start_message method must be implemented')

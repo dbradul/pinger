@@ -36,7 +36,10 @@ logs:
 	docker compose logs -f --tail 100
 
 create-migration:
-	cd src && pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+	cd src && pipenv run pw_migrate create --auto --auto-source 'common.models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+
+list-migrations:
+	cd src &&  pipenv run pw_migrate list --directory migrations --database sqlite:///../data/contacts.db && cd ..
 
 apply-migration:
 	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db && cd ..

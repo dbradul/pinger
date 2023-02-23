@@ -2,6 +2,8 @@ import os
 import traceback
 
 from datetime import datetime
+
+from typing import Union
 from viberbot.api.viber_requests import (
     ViberMessageRequest,
     ViberUnsubscribedRequest,
@@ -9,6 +11,7 @@ from viberbot.api.viber_requests import (
     ViberFailedRequest
 )
 
+from bot.resources import Resource
 from common.helpers import TextStyle, ScopeRateLimiter
 from common.logger import logger
 from common.models import Contact
@@ -22,6 +25,7 @@ class MessageHandler:
             messenger_bot: MessengerBot,
             contact_service: ContactService,
             pinger: Pinger,
+            bot_resource: Resource,
             outliers_filepath: str,
             rate_limit_call_num: int,
             rate_limit_period_sec: int
@@ -29,6 +33,7 @@ class MessageHandler:
         self._contact_service = contact_service
         self._messenger_bot = messenger_bot
         self._pinger = pinger
+        self._bot_resource = bot_resource
         self._outliers_filepath = outliers_filepath
         self._rate_limiter = ScopeRateLimiter(
             calls=rate_limit_call_num,
@@ -40,10 +45,11 @@ class MessageHandler:
 
     def handle_chat_message(self, message: str, contact: Contact) -> None:
         logger.info(f"MESSAGE: {message}, CONTACT: {contact.id}, {contact.name}")
-        keyboard = self._messenger_bot.get_keyboard(contact)
+        # keyboard = self._messenger_bot.get_keyboard(contact)
+        keyboard = self._contact_service.get_keyboard(contact)
         contact_id = contact.id
 
-        if message == self._messenger_bot.resource.MSG_QUESTION_TEXT:
+        if message == self._bot_resource.MSG_QUESTION_TEXT:
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=self._pinger.get_current_state_info(),
@@ -51,25 +57,27 @@ class MessageHandler:
             )
             self._contact_service.increase_requests_counter(contact)
 
-        elif message == self._messenger_bot.resource.MSG_SUBSCRIBE_TEXT:
+        elif message == self._bot_resource.MSG_SUBSCRIBE_TEXT:
             self._contact_service.subscribe(contact)
-            keyboard = self._messenger_bot.get_keyboard(contact)
+            # keyboard = self._messenger_bot.get_keyboard(contact)
+            keyboard = self._contact_service.get_keyboard(contact)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message='Підписано на розсилку',
                 keyboard=keyboard
             )
 
-        elif message == self._messenger_bot.resource.MSG_UNSUBSCRIBE_TEXT:
+        elif message == self._bot_resource.MSG_UNSUBSCRIBE_TEXT:
             self._contact_service.unsubscribe(contact)
-            keyboard = self._messenger_bot.get_keyboard(contact)
+            # keyboard = self._messenger_bot.get_keyboard(contact)
+            keyboard = self._contact_service.get_keyboard(contact)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message='Відписано від розсилки',
                 keyboard=keyboard
             )
 
-        elif message == self._messenger_bot.resource.MSG_ADMIN_STATS_TEXT:
+        elif message == self._bot_resource.MSG_ADMIN_STATS_TEXT:
             contacts = self._contact_service.get_recently_active_contacts()
             for contact in contacts:
                 self._messenger_bot.send_message(
@@ -82,12 +90,13 @@ class MessageHandler:
                 )
 
         elif message in (
-                self._messenger_bot.resource.MSG_ADMIN_MASK_TEXT,
-                self._messenger_bot.resource.MSG_ADMIN_UNMASK_TEXT
+                self._bot_resource.MSG_ADMIN_MASK_TEXT,
+                self._bot_resource.MSG_ADMIN_UNMASK_TEXT
         ):
             self._pinger.masked = not self._pinger.masked
             self._messenger_bot.masked = not self._messenger_bot.masked  # FIXME: duplicated info
-            keyboard = self._messenger_bot.get_keyboard(contact)
+            # keyboard = self._messenger_bot.get_keyboard(contact)
+            keyboard = self._contact_service.get_keyboard(contact)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=f'Розсилка повідомлень: {"ВИМКНЕНО" if self._pinger.masked else "УВІМКНЕНО"}!',
@@ -95,14 +104,15 @@ class MessageHandler:
             )
 
         elif message in (
-                self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT,
-                self._messenger_bot.resource.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
+                self._bot_resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT,
+                self._bot_resource.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
         ):
             logger.info(f"Enabling forced state: {self._pinger.forced_state}")
             forced_state = message == self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
             self._pinger.forced_state = forced_state
             self._messenger_bot.forced_state = forced_state  # FIXME: duplicated info, potential inconsistency
-            keyboard = self._messenger_bot.get_keyboard(contact)
+            # keyboard = self._messenger_bot.get_keyboard(contact)
+            keyboard = self._contact_service.get_keyboard(contact)
             forced_state_str = str(self._pinger.forced_state).upper()
             self._messenger_bot.send_message(
                 contact_id=contact_id,
@@ -111,27 +121,29 @@ class MessageHandler:
             )
 
         elif message in (
-                self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT,
-                self._messenger_bot.resource.MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT
+                self._bot_resource.MSG_ADMIN_FORCED_ONLINE_DISABLE_TEXT,
+                self._bot_resource.MSG_ADMIN_FORCED_OFFLINE_DISABLE_TEXT
         ):
             logger.info(f"Disabling forced state: {self._pinger.forced_state}")
             self._pinger.forced_state = None
             self._messenger_bot.forced_state = None  # FIXME: duplicated info, potential inconsistency
             forced_state_str = "DISABLED"
-            keyboard = self._messenger_bot.get_keyboard(contact)
+            # keyboard = self._messenger_bot.get_keyboard(contact)
+            keyboard = self._contact_service.get_keyboard(contact)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=f'Forced state: {forced_state_str}',
                 keyboard=keyboard
             )
 
-        elif message == self._messenger_bot.resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
+        elif message == self._bot_resource.MSG_ADMIN_ADV_MESSAGE_TEXT:
             logger.info(f"Sending adv. message...")
             engaged_contacts = self._contact_service.get_engaged_contacts()
             logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
             for engaged_contact in engaged_contacts:
                 adv_message = self.prepare_adv_message(engaged_contact)
-                keyboard = self._messenger_bot.get_keyboard(contact)
+                # keyboard = self._messenger_bot.get_keyboard(contact)
+                keyboard = self._contact_service.get_keyboard(contact)
                 if adv_message:
                     try:
                         logger.info(f"Sending ADV. message to {engaged_contact.id}, {engaged_contact.name}")
@@ -146,7 +158,7 @@ class MessageHandler:
                 else:
                     logger.error(f"Error preparing ADV. message for {engaged_contact.id}")
 
-        elif message == self._messenger_bot.resource.MSG_ADMIN_FORCED_RESEND_TEXT:
+        elif message == self._bot_resource.MSG_ADMIN_FORCED_RESEND_TEXT:
             current_state = self._pinger.get_current_state_info(bot=True)
             failed_outliers = []
             with open(self._outliers_filepath, 'r') as f:
@@ -154,7 +166,8 @@ class MessageHandler:
                 for outlier in outliers:
                     contact_id = outlier.strip()
                     contact = Contact.get_or_none(Contact.id == contact_id)
-                    keyboard = self._messenger_bot.get_keyboard(contact)
+                    # keyboard = self._messenger_bot.get_keyboard(contact)
+                    keyboard = self._contact_service.get_keyboard(contact)
                     logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
                     try:
                         self._messenger_bot.send_message(
@@ -199,10 +212,11 @@ class MessageHandler:
 
     def get_new_contact_invitation(self, contact: Contact) -> str:
         greeting = self._contact_service.get_greeting(contact)
-        invitation = f"{greeting}! 🙌\n\n"
-        "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n"
+        invitation = f"{greeting}! 🙌\n\n" \
+        "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n" \
         "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
         return invitation
+
 
 
 class ViberMessageHandler(MessageHandler):
@@ -222,7 +236,8 @@ class ViberMessageHandler(MessageHandler):
             if isinstance(bot_request, ViberMessageRequest):
                 allowed = self._rate_limiter.check_limits(scope=bot_request.sender.id)
                 contact = Contact.get_or_none(Contact.id == bot_request.sender.id)
-                keyboard = self._messenger_bot.get_keyboard(contact)
+                # keyboard = self._messenger_bot.get_keyboard(contact)
+                keyboard = self._contact_service.get_keyboard(contact)
 
                 if contact is None:
                     logger.error(f"Contact {bot_request.sender.id} not found in DB!")
@@ -248,7 +263,8 @@ class ViberMessageHandler(MessageHandler):
 
             elif isinstance(bot_request, ViberConversationStartedRequest):
                 contact = Contact.get_or_none(Contact.id == bot_request.user.id)
-                keyboard = self._messenger_bot.get_keyboard(contact)
+                # keyboard = self._messenger_bot.get_keyboard(contact)
+                keyboard = self._contact_service.get_keyboard(contact)
                 if contact is None:
                     contact = Contact.create(
                         id=bot_request.user.id,
@@ -275,7 +291,7 @@ class ViberMessageHandler(MessageHandler):
 
     def get_new_contact_invitation(self, contact) -> str:
         base_invitation = super().get_new_contact_invitation(contact)
-        full_invitation = f"{base_invitation}\n\n"
+        full_invitation = f"{base_invitation}\n\n" \
         """
 ️👇 ВАЖЛИВО! 👇
 
@@ -316,7 +332,8 @@ class TelegramMessageHandler(MessageHandler):
             # ):
             if (message_text and message_text == '/start'):
                 contact = Contact.get_or_none(Contact.id == user_id)
-                keyboard = self._messenger_bot.get_keyboard(contact)
+                # keyboard = self._messenger_bot.get_keyboard(contact)
+                keyboard = self._contact_service.get_keyboard(contact)
 
                 if contact is None:
                     # username = bot_request.message.from_user.full_name
@@ -362,7 +379,8 @@ class TelegramMessageHandler(MessageHandler):
             elif message_text and message_text != '/start':
                 allowed = self._rate_limiter.check_limits(scope=user_id)
                 contact = Contact.get_or_none(Contact.id == user_id)
-                keyboard = self._messenger_bot.get_keyboard(contact)
+                # keyboard = self._messenger_bot.get_keyboard(contact)
+                keyboard = self._contact_service.get_keyboard(contact)
 
                 if contact is None:
                     logger.error(f"Contact {user_id} not found in DB!")

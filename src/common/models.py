@@ -8,6 +8,7 @@ class Contact(Model):
     id = CharField(index=True, unique=True)
     name = CharField()
     active = BooleanField()
+    admin = BooleanField(default=False)
     last_access = DateTimeField()
     count_requests = IntegerField(default=0)
 

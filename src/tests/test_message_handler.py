@@ -37,7 +37,7 @@ def test_handle_chat_message(
         random_user: Contact,
 ):
     send_message_mock = message_handler._messenger_bot.send_message = Mock()
-    message_handler._messenger_bot.get_keyboard = Mock(return_value=['Button1', 'Button2'])
+    # message_handler._messenger_bot.get_keyboard = Mock(return_value=['Button1', 'Button2'])
     # keyboard = message_handler._messenger_bot.get_keyboard(random_user)
 
     # message_handler._pinger = Mock(spec=Pinger)
@@ -126,7 +126,8 @@ def test_send_adv_message(
         call(
             contact_id=engaged_contact.id,
             message=message_handler.prepare_adv_message(engaged_contact),
-            keyboard=message_handler._messenger_bot.get_keyboard(random_user)
+            # keyboard=message_handler._messenger_bot.get_keyboard(random_user)
+            keyboard=contact_service.get_keyboard(random_user)
         )
         for engaged_contact in contact_service.get_engaged_contacts()
     ]

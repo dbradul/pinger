@@ -1,15 +1,23 @@
 from datetime import datetime
 
 from peewee import fn, ModelSelect
-from typing import List
+from typing import List, Union
 
+from bot.resources import Resource
 from common.models import Contact
 from bot import MessengerBot
 
 
 class ContactService:
-    def __init__(self, messenger_bot: MessengerBot):
+    def __init__(
+            self,
+            messenger_bot: MessengerBot,
+            bot_resource: Resource,
+            # admin_ids: list[str] = None
+    ):
         self._messenger_bot = messenger_bot
+        self._bot_resource = bot_resource
+        # self._admin_ids = admin_ids or []
 
     def subscribe(self, contact: Contact) -> None:
         contact.active = True
@@ -63,3 +71,11 @@ class ContactService:
             else f'Вітаю, {contact.name}'
         )
         return invitation
+
+    def get_keyboard(self, contact: Union[None, Contact]):
+        return self._bot_resource.get_keyboard(
+            is_admin=contact and contact.admin,
+            is_subscribed=contact and contact.active,
+            is_masked=self._messenger_bot.masked,
+            is_forced_state=self._messenger_bot.forced_state
+        )

@@ -67,6 +67,12 @@ class Container(containers.DeclarativeContainer):
         bot.resources.TelegramResource
     )
 
+    bot_resource = providers.Selector(
+        config.BOT_BACKEND,
+        viber=viber_resource,
+        telegram=tg_resource,
+    )
+
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
         viber=providers.Singleton(
@@ -105,6 +111,7 @@ class Container(containers.DeclarativeContainer):
     contact_service = providers.Factory(
         services.ContactService,
         messenger_bot=messenger_bot,
+        bot_resource=bot_resource,
     )
 
     history_service = providers.Factory(
@@ -118,6 +125,7 @@ class Container(containers.DeclarativeContainer):
             messenger_bot=messenger_bot,
             contact_service=contact_service,
             pinger=pinger,
+            bot_resource=viber_resource,
             outliers_filepath=config.OUTLIERS_FILEPATH(),
             rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
             rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
@@ -127,6 +135,7 @@ class Container(containers.DeclarativeContainer):
             messenger_bot=messenger_bot,
             contact_service=contact_service,
             pinger=pinger,
+            bot_resource=tg_resource,
             outliers_filepath=config.OUTLIERS_FILEPATH(),
             rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
             rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()

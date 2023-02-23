@@ -26,7 +26,8 @@ class PingerListener:
         for subscriber in subscribers:
             try:
                 logger.info(f"  SENDING NOTIFICATION TO CONTACT: {subscriber.id}, {subscriber.name}")
-                keyboard = self._messenger_bot.get_keyboard(subscriber)
+                # keyboard = self._messenger_bot.get_keyboard(subscriber)
+                keyboard = self._contact_service.get_keyboard(subscriber)
                 self._messenger_bot.send_message(subscriber.id, new_state, keyboard)
                 self._contact_service.touch(subscriber)
             except Exception as e:
