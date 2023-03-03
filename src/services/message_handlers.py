@@ -26,41 +26,38 @@ class MessageHandler:
             contact_service: ContactService,
             pinger: Pinger,
             bot_resource: Resource,
-            outliers_filepath: str,
-            rate_limit_call_num: int,
-            rate_limit_period_sec: int
+            rate_limiter: ScopeRateLimiter,
+            outliers_filepath: str
     ):
         self._contact_service = contact_service
         self._messenger_bot = messenger_bot
         self._pinger = pinger
         self._bot_resource = bot_resource
+        self._rate_limiter = rate_limiter
         self._outliers_filepath = outliers_filepath
-        self._rate_limiter = ScopeRateLimiter(
-            calls=rate_limit_call_num,
-            period=rate_limit_period_sec
-        )
 
     def handle_incoming(self, request_data, request_headers) -> bool:
         raise NotImplementedError('incoming method must be implemented')
 
     def handle_chat_message(self, message: str, contact: Contact) -> None:
         logger.info(f"MESSAGE: {message}, CONTACT: {contact.id}, {contact.name}")
-        # keyboard = self._messenger_bot.get_keyboard(contact)
-        keyboard = self._contact_service.get_keyboard(contact)
+        # keyboard = self._contact_service.get_keyboard(contact)
+        keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
         contact_id = contact.id
 
         if message == self._bot_resource.MSG_QUESTION_TEXT:
+            current_state = self._pinger.get_current_state_info()
             self._messenger_bot.send_message(
                 contact_id=contact_id,
-                message=self._pinger.get_current_state_info(),
+                message=current_state,
                 keyboard=keyboard
             )
             self._contact_service.increase_requests_counter(contact)
 
         elif message == self._bot_resource.MSG_SUBSCRIBE_TEXT:
             self._contact_service.subscribe(contact)
-            # keyboard = self._messenger_bot.get_keyboard(contact)
-            keyboard = self._contact_service.get_keyboard(contact)
+            # keyboard = self._contact_service.get_keyboard(contact)
+            keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message='Підписано на розсилку',
@@ -69,8 +66,8 @@ class MessageHandler:
 
         elif message == self._bot_resource.MSG_UNSUBSCRIBE_TEXT:
             self._contact_service.unsubscribe(contact)
-            # keyboard = self._messenger_bot.get_keyboard(contact)
-            keyboard = self._contact_service.get_keyboard(contact)
+            # keyboard = self._contact_service.get_keyboard(contact)
+            keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message='Відписано від розсилки',
@@ -95,8 +92,8 @@ class MessageHandler:
         ):
             self._pinger.masked = not self._pinger.masked
             self._messenger_bot.masked = not self._messenger_bot.masked  # FIXME: duplicated info
-            # keyboard = self._messenger_bot.get_keyboard(contact)
-            keyboard = self._contact_service.get_keyboard(contact)
+            # keyboard = self._contact_service.get_keyboard(contact)
+            keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=f'Розсилка повідомлень: {"ВИМКНЕНО" if self._pinger.masked else "УВІМКНЕНО"}!',
@@ -108,11 +105,11 @@ class MessageHandler:
                 self._bot_resource.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT
         ):
             logger.info(f"Enabling forced state: {self._pinger.forced_state}")
-            forced_state = message == self._messenger_bot.resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
+            forced_state = message == self._bot_resource.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT
             self._pinger.forced_state = forced_state
             self._messenger_bot.forced_state = forced_state  # FIXME: duplicated info, potential inconsistency
-            # keyboard = self._messenger_bot.get_keyboard(contact)
-            keyboard = self._contact_service.get_keyboard(contact)
+            # keyboard = self._contact_service.get_keyboard(contact)
+            keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
             forced_state_str = str(self._pinger.forced_state).upper()
             self._messenger_bot.send_message(
                 contact_id=contact_id,
@@ -128,8 +125,8 @@ class MessageHandler:
             self._pinger.forced_state = None
             self._messenger_bot.forced_state = None  # FIXME: duplicated info, potential inconsistency
             forced_state_str = "DISABLED"
-            # keyboard = self._messenger_bot.get_keyboard(contact)
-            keyboard = self._contact_service.get_keyboard(contact)
+            # keyboard = self._contact_service.get_keyboard(contact)
+            keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
             self._messenger_bot.send_message(
                 contact_id=contact_id,
                 message=f'Forced state: {forced_state_str}',
@@ -142,8 +139,8 @@ class MessageHandler:
             logger.info(f"Contacts to advertise: {engaged_contacts.count()}")
             for engaged_contact in engaged_contacts:
                 adv_message = self.prepare_adv_message(engaged_contact)
-                # keyboard = self._messenger_bot.get_keyboard(contact)
-                keyboard = self._contact_service.get_keyboard(contact)
+                # keyboard = self._contact_service.get_keyboard(contact)
+                keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
                 if adv_message:
                     try:
                         logger.info(f"Sending ADV. message to {engaged_contact.id}, {engaged_contact.name}")
@@ -166,8 +163,8 @@ class MessageHandler:
                 for outlier in outliers:
                     contact_id = outlier.strip()
                     contact = Contact.get_or_none(Contact.id == contact_id)
-                    # keyboard = self._messenger_bot.get_keyboard(contact)
-                    keyboard = self._contact_service.get_keyboard(contact)
+                    # keyboard = self._contact_service.get_keyboard(contact)
+                    keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
                     logger.info(f"RESENDING MESSAGE: {current_state}, CONTACT: {contact.id}")
                     try:
                         self._messenger_bot.send_message(
@@ -237,7 +234,8 @@ class ViberMessageHandler(MessageHandler):
                 allowed = self._rate_limiter.check_limits(scope=bot_request.sender.id)
                 contact = Contact.get_or_none(Contact.id == bot_request.sender.id)
                 # keyboard = self._messenger_bot.get_keyboard(contact)
-                keyboard = self._contact_service.get_keyboard(contact)
+                # keyboard = self._contact_service.get_keyboard(contact)
+                keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
 
                 if contact is None:
                     logger.error(f"Contact {bot_request.sender.id} not found in DB!")
@@ -264,7 +262,8 @@ class ViberMessageHandler(MessageHandler):
             elif isinstance(bot_request, ViberConversationStartedRequest):
                 contact = Contact.get_or_none(Contact.id == bot_request.user.id)
                 # keyboard = self._messenger_bot.get_keyboard(contact)
-                keyboard = self._contact_service.get_keyboard(contact)
+                # keyboard = self._contact_service.get_keyboard(contact)
+                keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
                 if contact is None:
                     contact = Contact.create(
                         id=bot_request.user.id,
@@ -333,7 +332,8 @@ class TelegramMessageHandler(MessageHandler):
             if (message_text and message_text == '/start'):
                 contact = Contact.get_or_none(Contact.id == user_id)
                 # keyboard = self._messenger_bot.get_keyboard(contact)
-                keyboard = self._contact_service.get_keyboard(contact)
+                # keyboard = self._contact_service.get_keyboard(contact)
+                keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
 
                 if contact is None:
                     # username = bot_request.message.from_user.full_name
@@ -343,12 +343,6 @@ class TelegramMessageHandler(MessageHandler):
                         active=False,
                         last_access=datetime.utcnow()
                     )
-                    # username = bot_request.effective_user.full_name
-                    # invitation =  'Вітаю' if username == 'Subscriber' else \
-                    #              f'Вітаю, {username}'
-                    # invitation_message = f"{invitation}! 🙌\n\n" \
-                    #              "Якщо хочете дізнатись чи є світло саме зараз, натисніть кнопку 'Світло є?'\n\n" \
-                    #              "Якщо хочете отримувати повідомлення про світло, натисніть кнопку 'Підписатись'."
                     invitation = self.get_new_contact_invitation(contact)
                     self._messenger_bot.send_message(
                         contact_id=user_id,
@@ -380,7 +374,8 @@ class TelegramMessageHandler(MessageHandler):
                 allowed = self._rate_limiter.check_limits(scope=user_id)
                 contact = Contact.get_or_none(Contact.id == user_id)
                 # keyboard = self._messenger_bot.get_keyboard(contact)
-                keyboard = self._contact_service.get_keyboard(contact)
+                # keyboard = self._contact_service.get_keyboard(contact)
+                keyboard = self._bot_resource.get_keyboard(contact, self._messenger_bot)
 
                 if contact is None:
                     logger.error(f"Contact {user_id} not found in DB!")

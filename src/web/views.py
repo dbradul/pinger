@@ -48,4 +48,3 @@ def init_db():
     Contact.create_table()
     History.create_table()
     return 'OK - Created'
-

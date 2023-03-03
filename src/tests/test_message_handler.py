@@ -18,6 +18,8 @@ def message_handler(app) -> MessageHandler:
 @pytest.fixture()
 def messenger_bot(app) -> Mock:
     messenger_bot_mock = Mock(spec=MessengerBot)
+    messenger_bot_mock.masked = False
+    messenger_bot_mock.forced_state = False
     messenger_bot_mock.get_keyboard = Mock(return_value=['Button1', 'Button2'])
     messenger_bot_mock.verify_message_signature = Mock(return_value=True)
     messenger_bot_mock.send_message = Mock(
@@ -29,7 +31,10 @@ def messenger_bot(app) -> Mock:
 
 @pytest.fixture()
 def contact_service(app) -> ContactService:
-    return app.container.contact_service()
+    contact_service = app.container.contact_service()
+    # contact_service = Mock(spec=ContactService)
+    contact_service.get_keyboard = Mock(return_value=['Button1', 'Button2'])
+    return contact_service
 
 
 def test_handle_chat_message(
@@ -37,7 +42,7 @@ def test_handle_chat_message(
         random_user: Contact,
 ):
     send_message_mock = message_handler._messenger_bot.send_message = Mock()
-    # message_handler._messenger_bot.get_keyboard = Mock(return_value=['Button1', 'Button2'])
+    message_handler._messenger_bot.get_keyboard = Mock(return_value=['Button1', 'Button2'])
     # keyboard = message_handler._messenger_bot.get_keyboard(random_user)
 
     # message_handler._pinger = Mock(spec=Pinger)
@@ -165,12 +170,14 @@ def test_user_creation(
 
     # Act
     with app.container.messenger_bot.override(messenger_bot):
-        message_handler = app.container.message_handler()
-        message_handler.handle_incoming('42', 42)
+        with app.container.contact_service.override(contact_service):
+            message_handler = app.container.message_handler()
+            message_handler.handle_incoming('42', 42)
 
     # Assert
     assert len(contact_service.get_all()) == len(all_contacts) + 1
     new_contact = contact_service.get_by_filter(Contact.id == '01234567890A=')[0]
+    assert new_contact.name == 'John McClane'
     messenger_bot.send_message.assert_called_once_with(
         contact_id=new_contact.id,
         message=message_handler.get_new_contact_invitation(new_contact),

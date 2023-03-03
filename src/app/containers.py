@@ -29,9 +29,7 @@ class Container(containers.DeclarativeContainer):
 
     config.BOT_BACKEND.from_env("BOT_BACKEND")
     config.VIBER_API_TOKEN.from_env("VIBER_API_TOKEN")
-    config.VIBER_ADMIN_IDS.from_env("VIBER_ADMIN_IDS")
     config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
-    config.TELEGRAM_ADMIN_IDS.from_env("TELEGRAM_ADMIN_IDS")
 
     config.OUTLIERS_FILEPATH.from_env("OUTLIERS_FILEPATH")
     config.RATE_LIMIT_CALL_NUM.from_env("RATE_LIMIT_CALL_NUM")
@@ -77,16 +75,18 @@ class Container(containers.DeclarativeContainer):
         config.BOT_BACKEND,
         viber=providers.Singleton(
             bot.ViberMessengerBot,
-            api_client=viber_bot_api,
-            resource=viber_resource,
-            admin_ids=config.VIBER_ADMIN_IDS
+            api_client=viber_bot_api
         ),
         telegram=providers.Singleton(
             bot.TelegramMessengerBot,
-            api_client=tg_bot_api,
-            resource=tg_resource,
-            admin_ids=config.TELEGRAM_ADMIN_IDS
+            api_client=tg_bot_api
         ),
+    )
+
+    rate_limiter = providers.Factory(
+        common.helpers.ScopeRateLimiter,
+        calls=config.RATE_LIMIT_CALL_NUM.as_int(),
+        period=config.RATE_LIMIT_PERIOD_SEC.as_int()
     )
 
 
@@ -109,9 +109,7 @@ class Container(containers.DeclarativeContainer):
 
     # Services
     contact_service = providers.Factory(
-        services.ContactService,
-        messenger_bot=messenger_bot,
-        bot_resource=bot_resource,
+        services.ContactService
     )
 
     history_service = providers.Factory(
@@ -126,9 +124,8 @@ class Container(containers.DeclarativeContainer):
             contact_service=contact_service,
             pinger=pinger,
             bot_resource=viber_resource,
-            outliers_filepath=config.OUTLIERS_FILEPATH(),
-            rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
-            rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
+            rate_limiter=rate_limiter,
+            outliers_filepath=config.OUTLIERS_FILEPATH()
         ),
         telegram=providers.Factory(
             services.TelegramMessageHandler,
@@ -136,9 +133,8 @@ class Container(containers.DeclarativeContainer):
             contact_service=contact_service,
             pinger=pinger,
             bot_resource=tg_resource,
-            outliers_filepath=config.OUTLIERS_FILEPATH(),
-            rate_limit_call_num=config.RATE_LIMIT_CALL_NUM.as_int(),
-            rate_limit_period_sec=config.RATE_LIMIT_PERIOD_SEC.as_int()
+            rate_limiter=rate_limiter,
+            outliers_filepath=config.OUTLIERS_FILEPATH()
         ),
     )
 
@@ -147,6 +143,7 @@ class Container(containers.DeclarativeContainer):
         contact_service=contact_service,
         history_service=history_service,
         messenger_bot=messenger_bot,
+        bot_resource=bot_resource,
         failed_contacts_filepath=config.OUTLIERS_FILEPATH()
     )
 

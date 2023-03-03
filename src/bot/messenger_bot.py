@@ -1,29 +1,22 @@
 import json
-from typing import Any, Union
+from typing import Union
 
 import telegram
 import viberbot
 from viberbot.api.messages import TextMessage
-# from viberbot.api.viber_requests import ViberConversationStartedRequest
 
-from .resources import Resource
 from common.helpers import TextStyle
 from common.logger import logger
-from common.models import Contact
 
 
 class MessengerBot:
     def __init__(
             self,
-            api_client: Union[viberbot.Api, telegram.Bot],
-            resource: Resource,
-            admin_ids: list[str] = None
+            api_client: Union[viberbot.Api, telegram.Bot]
     ):
         self._api_client = api_client
-        self.resource = resource
         self.masked = False
         self.forced_state = None
-        self._admin_ids = admin_ids or []
 
     def send_message(self, contact_id, message, keyboard=None) -> None:
         raise NotImplementedError('send_message method must be implemented')
@@ -51,17 +44,6 @@ class MessengerBot:
         else:
             return text
 
-    # def get_keyboard(self, contact: Union[None, Contact]):
-    #     return self.resource.get_keyboard(
-    #         is_admin=contact and contact.id in self._admin_ids,
-    #         is_subscribed=contact and contact.active,
-    #         is_masked=self.masked,
-    #         is_forced_state=self.forced_state
-    #     )
-
-    # def is_start_message(self, data: Any) -> bool:
-    #     raise NotImplementedError('is_start_message method must be implemented')
-
 
 class ViberMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
@@ -88,9 +70,6 @@ class ViberMessengerBot(MessengerBot):
         else:
             return super(cls, cls).render_text(text, style)
 
-    # def is_start_message(self, bot_request: Any) -> bool:
-    #     return isinstance(bot_request, ViberConversationStartedRequest)
-
 
 class TelegramMessengerBot(MessengerBot):
     def send_message(self, contact_id, message, keyboard=None):
@@ -111,7 +90,3 @@ class TelegramMessengerBot(MessengerBot):
     def parse_request(self, data: bytes):
         json_data = json.loads(data.decode())
         return telegram.Update.de_json(json_data, self._api_client)
-
-    # def is_start_message(self, bot_request: Any) -> bool:
-    #     message_text = bot_request.message and bot_request.message.text
-    #     return message_text and message_text == '/start'

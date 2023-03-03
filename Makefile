@@ -50,6 +50,5 @@ apply-migration-name:
 test:
 	pipenv run pytest -s -v --rootdir . --setup-show
 
-
 export:
 	export $(cat .env | sed 's/#.*//g' | xargs)
