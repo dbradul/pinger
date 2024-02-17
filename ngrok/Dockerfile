@@ -13,15 +13,16 @@ RUN set -ex \
   && cp /usr/bin/envsubst /usr/local/bin/envsubst \
   \
   && cd /tmp \
-  && wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip --no-check-certificate \
-  && unzip ngrok-stable-linux-amd64.zip \
-  && install -v -D ngrok /bin/ngrok \
-  && rm -f ngrok-stable-linux-amd64.zip ngrok \
+  && wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz --no-check-certificate \
+  && tar xvzf ngrok-v3-stable-linux-amd64.tgz -C /usr/local/bin \
+  && tar xvzf ngrok-v3-stable-linux-amd64.tgz -C /bin \
+  && rm -f ngrok-stable-linux-amd64.zip \
   \
   && apk del .build-deps
 
 ADD ngrok.template $HOME/ngrok.template
-RUN envsubst < $HOME/ngrok.template > $HOME/ngrok.yml
+RUN mkdir -p $HOME/.config/ngrok
+RUN envsubst < $HOME/ngrok.template > $HOME/.config/ngrok/ngrok.yml
 RUN rm $HOME/ngrok.template
 
 
