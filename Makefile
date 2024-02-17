@@ -35,6 +35,17 @@ ps:
 logs:
 	docker compose logs -f --tail 100
 
+bash: ## Run bash in c=<name> service container
+	docker compose exec $(c) bash
+
+exec: ## Run cmd=<command> in c=<name> service container
+	#docker compose exec -it $(c) $(cmd)
+	docker compose exec $(c) $(cmd)
+
+
+
+
+
 create-migration:
 	cd src && pipenv run pw_migrate create --auto --auto-source 'common.models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
 
