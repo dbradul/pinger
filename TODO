@@ -17,3 +17,6 @@
 - move forced from Pinger to listeners manipulation
 - extract message handling into separate class, e.g. MessageDispatcher
 - move models into a separate package
+- logrotate
+- FastAPI
+- monitoring and logging

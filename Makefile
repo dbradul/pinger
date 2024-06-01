@@ -47,7 +47,10 @@ exec: ## Run cmd=<command> in c=<name> service container
 
 
 create-migration:
-	cd src && pipenv run pw_migrate create --auto --auto-source 'models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+	cd src && pipenv run pw_migrate create --auto --auto-source 'common.models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
+
+list-migrations:
+	cd src &&  pipenv run pw_migrate list --directory migrations --database sqlite:///../data/contacts.db && cd ..
 
 apply-migration:
 	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db && cd ..
@@ -56,7 +59,7 @@ apply-migration-name:
 	cd src && pipenv run pw_migrate migrate --directory migrations --database sqlite:///../data/contacts.db --name $(n) && cd ..
 
 test:
-	pipenv run pytest -s -v ./src/tests
+	pipenv run pytest -s -v --rootdir . --setup-show
 
 export:
 	export $(cat .env | sed 's/#.*//g' | xargs)

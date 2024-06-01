@@ -1,6 +1,10 @@
 import copy
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton
+from typing import Union
+
+from bot import MessengerBot
+from common.models import Contact
 
 
 class Resource:
@@ -17,10 +21,16 @@ class Resource:
     MSG_SUBSCRIBE_TEXT = 'Підписатись'
     MSG_UNSUBSCRIBE_TEXT = 'Відписатись'
 
-    def get_keyboard(self, is_admin, is_subscribed, is_masked, is_forced_state):
+    def get_keyboard_(self, is_admin, is_subscribed, is_masked, is_forced_state):
         keyboard = self._get_common_keyboard(is_subscribed)
         if is_admin:
             self._add_admin_keyboard(keyboard, is_masked, is_forced_state)
+        return keyboard
+
+    def get_keyboard(self, contact: Union[None, Contact], messenger_bot: MessengerBot):
+        keyboard = self._get_common_keyboard(contact and contact.active)
+        if contact and contact.admin:
+            self._add_admin_keyboard(keyboard, messenger_bot.masked, messenger_bot.forced_state)
         return keyboard
 
     def _get_common_keyboard(self, is_subscribed):

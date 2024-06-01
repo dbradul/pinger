@@ -1,8 +1,13 @@
 import threading
+import time
 from typing import Dict, Any
 
 import ratelimit
 from enum import Enum
+
+import requests
+
+from common.logger import logger
 
 
 class TextStyle(Enum):
@@ -56,3 +61,10 @@ class ThreadSafeSingleton(type):
                 if cls not in cls._instances:
                     cls._instances[cls] = super(ThreadSafeSingleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+def kick_off_requests_on_startup(startup_delay: int, flask_port: int):
+    logger.debug("Post start")
+    time.sleep(startup_delay)
+    requests.get(f'http://localhost:{flask_port}/register')
+    requests.get(f'http://localhost:{flask_port}/init_db')

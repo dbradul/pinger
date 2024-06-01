@@ -1,11 +1,15 @@
 import viberbot
 import telegram
+from threading import Thread
 
 import bot.resources
 import common
 import services
 
 from dependency_injector import containers, providers
+
+from common.helpers import kick_off_requests_on_startup
+
 
 class Container(containers.DeclarativeContainer):
     # config = providers.Configuration(ini_files=["config.ini"])
@@ -14,7 +18,6 @@ class Container(containers.DeclarativeContainer):
     #     logging.config.fileConfig,
     #     fname="logging.ini",
     # )
-
 
     # Config
     config = providers.Configuration()
@@ -26,11 +29,15 @@ class Container(containers.DeclarativeContainer):
 
     config.BOT_BACKEND.from_env("BOT_BACKEND")
     config.VIBER_API_TOKEN.from_env("VIBER_API_TOKEN")
-    config.VIBER_ADMIN_IDS.from_env("VIBER_ADMIN_IDS")
     config.TELEGRAM_API_TOKEN.from_env("TELEGRAM_API_TOKEN")
-    config.TELEGRAM_ADMIN_IDS.from_env("TELEGRAM_ADMIN_IDS")
 
     config.OUTLIERS_FILEPATH.from_env("OUTLIERS_FILEPATH")
+    config.RATE_LIMIT_CALL_NUM.from_env("RATE_LIMIT_CALL_NUM")
+    config.RATE_LIMIT_PERIOD_SEC.from_env("RATE_LIMIT_PERIOD_SEC")
+
+    config.BACKEND_STARTUP_DELAY.from_env("BACKEND_STARTUP_DELAY", as_=int)
+    config.FLASK_PORT.from_env("FLASK_PORT", as_=int)
+
 
     # Bot
     viber_bot_api_configuration = providers.Singleton(
@@ -58,32 +65,30 @@ class Container(containers.DeclarativeContainer):
         bot.resources.TelegramResource
     )
 
+    bot_resource = providers.Selector(
+        config.BOT_BACKEND,
+        viber=viber_resource,
+        telegram=tg_resource,
+    )
 
-    # Services
     messenger_bot = providers.Selector(
         config.BOT_BACKEND,
         viber=providers.Singleton(
-            services.ViberMessengerBot,
-            api_client=viber_bot_api,
-            resource=viber_resource,
-            admin_ids=config.VIBER_ADMIN_IDS
+            bot.ViberMessengerBot,
+            api_client=viber_bot_api
         ),
         telegram=providers.Singleton(
-            services.TelegramMessengerBot,
-            api_client=tg_bot_api,
-            resource=tg_resource,
-            admin_ids=config.TELEGRAM_ADMIN_IDS
+            bot.TelegramMessengerBot,
+            api_client=tg_bot_api
         ),
     )
 
-    contact_service = providers.Factory(
-        services.ContactService,
-        messenger_bot=messenger_bot,
+    rate_limiter = providers.Factory(
+        common.helpers.ScopeRateLimiter,
+        calls=config.RATE_LIMIT_CALL_NUM.as_int(),
+        period=config.RATE_LIMIT_PERIOD_SEC.as_int()
     )
 
-    history_service = providers.Factory(
-        services.HistoryService
-    )
 
     # Pinger
     ssh_remote_host = providers.Factory(
@@ -101,11 +106,63 @@ class Container(containers.DeclarativeContainer):
         remote_host=ssh_remote_host
     )
 
+
+    # Services
+    contact_service = providers.Factory(
+        services.ContactService
+    )
+
+    history_service = providers.Factory(
+        services.HistoryService
+    )
+
+    message_handler = providers.Selector(
+        config.BOT_BACKEND,
+        viber=providers.Factory(
+            services.ViberMessageHandler,
+            messenger_bot=messenger_bot,
+            contact_service=contact_service,
+            pinger=pinger,
+            bot_resource=viber_resource,
+            rate_limiter=rate_limiter,
+            outliers_filepath=config.OUTLIERS_FILEPATH()
+        ),
+        telegram=providers.Factory(
+            services.TelegramMessageHandler,
+            messenger_bot=messenger_bot,
+            contact_service=contact_service,
+            pinger=pinger,
+            bot_resource=tg_resource,
+            rate_limiter=rate_limiter,
+            outliers_filepath=config.OUTLIERS_FILEPATH()
+        ),
+    )
+
     pinger_listener = providers.Factory(
         services.PingerListener,
         contact_service=contact_service,
         history_service=history_service,
         messenger_bot=messenger_bot,
+        bot_resource=bot_resource,
         failed_contacts_filepath=config.OUTLIERS_FILEPATH()
     )
 
+
+    # Web
+    wiring_config = containers.WiringConfiguration(
+        modules=[
+            "web.views"
+        ],
+    )
+
+
+    # Init
+    init_thread = providers.Resource(
+        Thread,
+        target=kick_off_requests_on_startup,
+        daemon=True,
+        kwargs={
+            "startup_delay": config.BACKEND_STARTUP_DELAY(),
+            "flask_port": config.FLASK_PORT()
+        }
+    )
