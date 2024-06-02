@@ -4,8 +4,10 @@ env/
 .*
 data/
 logs/
+_backups/
 src/migrations
 ngrok/ngrok.yml
 !.flake8
+!.github
 !.env.example
 !.gitignore

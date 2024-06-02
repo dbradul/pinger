@@ -46,7 +46,7 @@ exec: ## Run cmd=<command> in c=<name> service container
 
 
 
-create-migration:
+create-migration: ## Create a migration with n=<name>
 	cd src && pipenv run pw_migrate create --auto --auto-source 'common.models' --directory migrations --database sqlite:///../data/contacts.db $(n) && cd ..
 
 list-migrations:

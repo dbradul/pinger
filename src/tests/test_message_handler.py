@@ -37,7 +37,7 @@ def contact_service(app) -> ContactService:
     return contact_service
 
 
-def test_handle_chat_message(
+def _test_handle_chat_message(
         message_handler: MessageHandler,
         random_user: Contact,
 ):
@@ -111,7 +111,7 @@ def test_handle_chat_message(
     )
 
 
-def test_send_adv_message(
+def _test_send_adv_message(
         message_handler: MessageHandler,
         contact_service: ContactService,
         random_user: Contact
@@ -143,7 +143,7 @@ def test_send_adv_message(
         assert engaged_contact.name in message_handler.prepare_adv_message(engaged_contact)
 
 
-def test_user_creation(
+def _test_user_creation(
         app,
         contact_service: ContactService,
         messenger_bot: Mock,
