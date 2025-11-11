@@ -99,26 +99,26 @@ class ViberResource(Resource):
             "ActionType": "reply",
             "ActionBody": f'{MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT}',
         },
-        {
-            "Columns": 6,
-            "Rows": 1,
-            "Text": f'{KBRD_BTN_RESEND_LABEL}',
-            "TextSize": "large",
-            "TextHAlign": "center",
-            "TextVAlign": "center",
-            "ActionType": "reply",
-            "ActionBody": f'{MSG_ADMIN_FORCED_RESEND_TEXT}',
-        },
-        {
-            "Columns": 6,
-            "Rows": 1,
-            "Text": f'{KBRD_BTN_ADV_MESSAGE_LABEL}',
-            "TextSize": "large",
-            "TextHAlign": "center",
-            "TextVAlign": "center",
-            "ActionType": "reply",
-            "ActionBody": f'{MSG_ADMIN_ADV_MESSAGE_TEXT}',
-        },
+        # {
+        #     "Columns": 6,
+        #     "Rows": 1,
+        #     "Text": f'{KBRD_BTN_RESEND_LABEL}',
+        #     "TextSize": "large",
+        #     "TextHAlign": "center",
+        #     "TextVAlign": "center",
+        #     "ActionType": "reply",
+        #     "ActionBody": f'{MSG_ADMIN_FORCED_RESEND_TEXT}',
+        # },
+        # {
+        #     "Columns": 6,
+        #     "Rows": 1,
+        #     "Text": f'{KBRD_BTN_ADV_MESSAGE_LABEL}',
+        #     "TextSize": "large",
+        #     "TextHAlign": "center",
+        #     "TextVAlign": "center",
+        #     "ActionType": "reply",
+        #     "ActionBody": f'{MSG_ADMIN_ADV_MESSAGE_TEXT}',
+        # },
     ]
 
     KBRD_SUBSCRIBE = {
@@ -258,9 +258,9 @@ class TelegramResource(Resource):
                 KeyboardButton(self.MSG_ADMIN_FORCED_ONLINE_ENABLE_TEXT),
                 KeyboardButton(self.MSG_ADMIN_FORCED_OFFLINE_ENABLE_TEXT)
             ],
-            [
-                KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
-            ],
+            # [
+            #     KeyboardButton(self.MSG_ADMIN_FORCED_RESEND_TEXT)
+            # ],
             # [
             #     KeyboardButton(self.MSG_ADMIN_ADV_MESSAGE_TEXT)
             # ],
